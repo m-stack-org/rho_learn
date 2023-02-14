@@ -135,20 +135,20 @@ pip install .
 cd ..
 ```
 
-3. **``equistore``**: a development branch of equistore is required for this setup.
-
-```
-git clone -b rholearn https://github.com/lab-cosmo/equistore.git
-cd equistore
-pip install .
-cd ..
-```
-
-4. **``equisolve``**: a development branch of equisolve is required for this setup.
+3. **``equisolve``**: a development branch of equisolve is required for this setup.
 
 ```
 git clone -b dev/split https://github.com/lab-cosmo/equisolve.git
 cd equisolve
+pip install .
+cd ..
+```
+
+4. **``equistore``**: a development branch of equistore is required for this setup.
+
+```
+git clone -b rholearn https://github.com/lab-cosmo/equistore.git
+cd equistore
 pip install .
 cd ..
 ```
