@@ -5,24 +5,34 @@ Author: Joseph W. Abbott, PhD Student @ Lab COSMO, EPFL
 
 ## About
 
-A proof-of-concept workflow for torch-based electron density learning. This uses
-packages from the software stacks of labs COSMO and LCMD at EPFL at various
-stages of the prediction workflow.
+A proof-of-concept workflow for torch-based electron density learning.
+Equivariant structural representations, that is those that transform
+equivariantly under rotation with the irreducible spherical components of the
+target property (i.e. whether they be invariant or covariant), can be
+constructed using the xyz coordinates of a set of training molecules. As part of
+a supervised machine learning scheme, these structural representations form
+inputs to the machine learning model, while reference electron densities
+calculated by quantum chemical methods are given as target outputs.
+
+Model training is performed using PyTorch, but various other parts of the
+workflow are performed with a number of open source packages from the software
+stacks of labs COSMO and LCMD at EPFL. The main ones are outlined below.
+
 
 **``Q-Stack``**: [lcmd-epfl/Q-stack](https://github.com/lcmd-epfl/Q-stack)
 
 A software stack dedicated to pre- and post-processing tasks for quantum machine
-learning. In ``rholearn``, its ``equistore``-interfacing module ``equio`` is
+learning. In **rholearn**, its **equistore**-interfacing module ``equio`` is
 used to pre-process electron density coefficients generated from quantum
 chemical calculations into TensorMap format, ready for input into a
-``equistore``/``torch``-based ML model. Its ``fields`` module is also used to
+**equistore**/**torch**-based ML model. Its ``fields`` module is also used to
 post-process electron densities into a format suitable for visualization.
 
 
 **``rascaline``**: [Luthaf/rascaline](https://github.com/Luthaf/rascaline)
 
 This is used to generate equivariant structural representations for input into
-ML models. In ``rholearn``, ``rascaline`` is used to build an atom-centered
+ML models. In **rholearn**, **rascaline** is used to build an atom-centered
 density descriptor of the molecules in the training data, which is then used to
 generate an equivariant $\lambda$-SOAP representation.
 
@@ -31,16 +41,16 @@ generate an equivariant $\lambda$-SOAP representation.
 
 This is a storage format for atomistic machine learning, allowing an efficient
 way to track data and associated metadata for a wide range of atomistic systems
-and objects. In ``rholearn``, it is used to store $\lambda$-SOAP structural
+and objects. In **rholearn**, it is used to store $\lambda$-SOAP structural
 representations, ground and excited state electron densities, and Coulomb
 overlap matrices.
 
 
 **``equisolve``**: [lab-cosmo/equisolve](https://github.com/lab-cosmo/equisolve)
 
-Concerned with higher-level functions and classes built on top of ``equistore``,
+Concerned with higher-level functions and classes built on top of **equistore**,
 this package is used to prepare data and build models for machine learning.
-However, it is still in a very early alpha development stage. In ``rholearn``,
+However, it is still in a very early alpha development stage. In **rholearn**,
 it is used to split TensorMap objects storing structural representations and
 electron densities into train, test, and validation data.
 
@@ -51,11 +61,9 @@ This package is used a an interactive visualizer and property explorer for the
 molecular data from which the structural representations are built.
 
 
-
 # Set up
 
 ## Requirements
-
 
 The only requirements to begin installation are ``git``, ``conda`` and ``rustc``:
 
