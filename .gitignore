@@ -1,0 +1,19 @@
+**__pycache__/
+build/
+rholearn.egg-info
+
+data/
+results/
+simulations/
+experiments/
+
+# Ignore the folders/files produced in the running of the example azoswitch
+# notebooks
+docs/example/azoswitch/partitions
+docs/example/azoswitch/lambda_soap.npz
+docs/example/azoswitch/lambda_soap_cleaned.npz
+docs/example/azoswitch/rascal_hypers.pickle
+
+.DS_Store
+
+run*.sh
