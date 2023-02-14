@@ -188,14 +188,14 @@ class CoulombLoss(torch.nn.Module):
         Defines the keys of the Coulomb matrices TensorMap that should be kept,
         according to the keys of the ``output_like`` block.
         """
-        # Take only combinations (l1, l2, a,1, a2) but not (l2, l1, a2, a1) due
+        # Take only combinations (l1, l2, a1, a2) but not (l2, l1, a2, a1) due
         # to the symmetry of the coulomb matrices
         coulomb_keys = []
         for idx, (l1, a1) in enumerate(output_like.keys):
             for l2, a2 in output_like.keys[idx:]:
                 coulomb_keys.append([l1, l2, a1, a2])
 
-        # The Lables object needs to be associated with a TensorBlock so they
+        # The Labels object needs to be associated with a TensorBlock so they
         # are searchable
         return utils.searchable_labels(
             Labels(names=coulomb_matrices.keys.names, values=np.array(coulomb_keys))
@@ -246,6 +246,8 @@ class CoulombLoss(torch.nn.Module):
 
             # Find the structure indices common to both blocks
             shared_structure_idxs = set(structures_1).intersection(set(structures_2))
+            if len(shared_structure_idxs) == 0:
+                continue
 
             structures_dict = {}
             for A in shared_structure_idxs:
@@ -360,7 +362,6 @@ class CoulombLoss(torch.nn.Module):
                 delta_block1=delta_block1,
                 delta_block2=delta_block2,
                 coulomb_dict=coulomb_dict,
-                # target_provided=target_provided,
             )
             if l1 == l2 and a1 == a2:  # diagonal block
                 loss += block_loss
