@@ -129,7 +129,7 @@ development branches are required for this setup.
 
   6. **chemiscope**: ``pip install chemiscope``
 
-  7. **rholearn**: ``cd rho_learn && pip install .``
+  7. **rholearn**: ensure you're in the ``rho_learn/`` directory then ``pip install .``
 
 
 ## Jupyter Notebooks
