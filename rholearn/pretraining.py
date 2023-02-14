@@ -63,7 +63,7 @@ from equistore import Labels, TensorMap
 from equistore.metaoperations import unique
 from equistore.operations import slice, split
 
-from equisolve.split_data import split_data
+from equisolve.utils.split_data import split_data
 
 import rholearn.io
 from rholearn.loss import CoulombLoss, MSELoss, VALID_LOSS_FNS
