@@ -57,16 +57,17 @@ molecular data from which the structural representations are built.
 ## Requirements
 
 
-The only requirements to begin installation are ``conda`` and ``rustc``:
+The only requirements to begin installation are ``git``, ``conda`` and ``rustc``:
 
+* ``git >= 2.37``
 * ``conda >= 22.9``
 * ``rustc >= 1.65``
 
 **``conda``**
  
-Is used as a package and environment manager. In ``rholearn``, a virtual
-environment will be created within which the appropriate version of Python (``==
-3.10``) and required packages will be installed.
+Is used as a package and environment manager. It allows a virtual environment
+will be created within which the appropriate version of Python (``== 3.10``) and
+required packages will be installed.
 
 If you don't already have ``conda``, the latest version of the lightweight
 [``miniforge``](https://github.com/conda-forge/miniforge/releases/) can be
@@ -86,11 +87,8 @@ is not seen, the command ``bash`` might have to be run to activate ``conda``.
 
 **``rustc``**
 
-Is used to compile code in ``rascaline`` and ``equistore``, which are
-packages from the lab COSMO software stack used to generate strutcural
-representations and store atomistic ML data and metadata, respectively.
-
-To install ``rustc``, run the following command, taken from the ['Install
+Is used to compile code in ``rascaline`` and ``equistore``. To install
+``rustc``, run the following command, taken from the ['Install
 Rust'](https://www.rust-lang.org/tools/install) webpage:
 
 ```
@@ -102,79 +100,37 @@ and follow the installation instructions.
 
 ## Installation
 
-Install the following packages - it is important you do so **in the following order**.
 
+Clone this repo and create a ``conda`` environment using the ``environment.yml``
+file. This will install all the required base packages, such as ase,
+numpy, torch and matplotlib, into an environment called ``rho``.
 
-1. Clone the **``rholearn``** repo
+1. Clone the **``rholearn``** repo and create a virtual environment.
 
 ```
 git clone https://github.com/jwa7/rho_learn.git
 cd rho_learn
-```
-
-Create a ``conda`` environment using the file ``environment.yml``. This will
-install all the required base packages, such as ``ase``, ``numpy``, ``torch``
-and ``matplotlib``, into an environment called ``rho``. Once the environment is
-activated, ``rholearn`` can be installed into it.
-
-```
 conda env create -f environment.yml
 conda activate rho
-cd ..
 ```
 
 Then, some atomistic ML packages from the lab COSMO and LCMD software stacks can
-be installed.
+be installed in the ``rho`` environment. Ensure you install these **in the order
+shown below** (this is very important) and with the exact commands, as some
+development branches are required for this setup.
 
-2. **``rascaline``**:
+  2. **rascaline**: ``pip install git+https://github.com/Luthaf/rascaline.git``
 
-```
-git clone https://github.com/Luthaf/rascaline.git
-cd rascaline
-pip install .
-cd ..
-```
+  3. **equisolve**: ``pip install git+https://github.com/lab-cosmo/equisolve.git@rholearn``
 
-3. **``equisolve``**: a development branch of equisolve is required for this setup.
+  4. **equistore**: ``pip install git+https://github.com/lab-cosmo/equistore.git@rholearn``
 
-```
-git clone -b dev/split https://github.com/lab-cosmo/equisolve.git
-cd equisolve
-pip install .
-cd ..
-```
+  5. **qstack**: ``pip install git+https://github.com/jwa7/Q-stack.git``
 
-4. **``equistore``**: a development branch of equistore is required for this setup.
+  6. **chemiscope**: ``pip install chemiscope``
 
-```
-git clone -b rholearn https://github.com/lab-cosmo/equistore.git
-cd equistore
-pip install .
-cd ..
-```
+  7. **rholearn**: ``cd rho_learn && pip install .``
 
-5. **``qstack``**: a fork of Q-Stack is required for this setup.
-
-```
-git clone https://github.com/jwa7/Q-stack.git
-cd Q-stack
-pip install .
-cd ..
-```
-
-6. **``chemiscope``**: Installation is easy with ``pip``.
-
-```
-pip install chemiscope
-```
-
-7. Finally, install **``rholearn``**:
-
-```
-cd rho_learn
-pip install .
-cd ..
-```
 
 ## Jupyter Notebooks
 
