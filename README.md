@@ -143,14 +143,13 @@ Then, working within the ``rho`` environment, **``rholearn``** and other modules
 can then be imported in a Python script as follows:
 
 ```py
-from rascaline import SphericalExpansion
-from equistore import io, Labels, TensorMap
-from equisolve import split_data
-
 from rholearn.features import lambda_soap_vector
 from rholearn.loss import MSELoss, CoulombLoss
 from rholearn.models import EquiModelGlobal
 from rholearn.training import train
+
+from equistore import io, Labels, TensorMap
+from equisolve.utils import split_data
 ```
 
 ## Updates and Troubleshooting
