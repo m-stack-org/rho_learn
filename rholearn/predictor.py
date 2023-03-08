@@ -18,7 +18,7 @@ def predict_density(
     rascal_hypers: dict,
     model_path: str,
     basis: str,
-    invariant_means: Optional[str] = None,
+    inv_means_path: Optional[str] = None,
 ):
     """
     Loads a xyz file of structure(s) at `xyz_path` and uses the `rascal_hypers`
@@ -36,9 +36,9 @@ def predict_density(
     :param basis: the basis set, i.e. "ccpvqz jkfit", to use when constructing
         the vectorised density coefficients. Must be the same as the basis used
         to calculate the training data.
-    :param invariant_means: if the invariant blocks have been standardized by
+    :param inv_means_path: if the invariant blocks have been standardized by
         subtraction of the mean of their features, the mean needs to be added
-        back to the prediction. If so, `invariant_means` should be the path to
+        back to the prediction. If so, `inv_means_path` should be the path to
         the TensorMap containing these means. Otherwise, pass as None (default).
     """
 
@@ -70,8 +70,8 @@ def predict_density(
 
     # Add back the feature means to the invariant (l=0) blocks if the model was trained
     # against electron densities with standardized invariants
-    if invariant_means is not None:
-        out_pred = features.standardize_invariants(out_pred, invariant_means, reverse=True)
+    if inv_means_path is not None:
+        out_pred = features.standardize_invariants(out_pred, inv_means_path, reverse=True)
 
     # Dropt the structure label from the TensorMap
     out_pred = utils.drop_metadata_name(out_pred, axis="samples", name="structure")
