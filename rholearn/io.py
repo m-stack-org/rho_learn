@@ -5,7 +5,9 @@ from typing import List
 import numpy as np
 import torch
 
-from equistore import io, Labels, TensorBlock, TensorMap
+import equistore
+from equistore import Labels, TensorBlock, TensorMap
+
 from rholearn import utils
 
 # Define the attributes of EquiModelGlobal and EquiModelLocal that are dict
@@ -66,7 +68,7 @@ def load_tensormap_to_torch(
     if not os.path.exists(path):
         raise FileNotFoundError(f"file at path {path} does not exist")
     return utils.tensor_to_torch(
-        io.load(path), requires_grad=requires_grad, dtype=dtype, device=device
+        equistore.io.load(path), requires_grad=requires_grad, dtype=dtype, device=device
     )
 
 
