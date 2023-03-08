@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from equistore import Labels, TensorBlock, TensorMap
-from rholearn.io import check_or_create_dir, save_torch_object
+from rholearn import io
 
 
 def train(
@@ -43,7 +43,7 @@ def train(
     )
 
     # Create a results directory
-    check_or_create_dir(save_dir)
+    io.check_or_create_dir(save_dir)
 
     # Define the range of epochs and initialize losses, depending on whether the
     # simulation is being restarted or not
@@ -89,8 +89,8 @@ def train(
         if n_epochs <= n_msgs or epoch % (n_epochs / n_msgs) == 0:
             msg = (
                 f"epoch {epoch}"
-                + f" train {np.round(losses_train[-1], 2)}"
-                + f" test {np.round(losses_test[-1], 2)}"
+                f" train {np.round(losses_train[-1], 10)}"
+                f" test {np.round(losses_test[-1], 10)}"
             )
             print(msg)
             with open(os.path.join(save_dir, "log.txt"), "a+") as f:
@@ -101,10 +101,10 @@ def train(
 
             # Create a results directory for this specific epoch
             epoch_dir = os.path.join(save_dir, f"epoch_{epoch}")
-            check_or_create_dir(epoch_dir)
+            io.check_or_create_dir(epoch_dir)
 
             # Save model
-            save_torch_object(
+            io.save_torch_object(
                 torch_obj=model,
                 path=os.path.join(epoch_dir, "model.pt"),
                 torch_obj_str="model",
@@ -213,7 +213,7 @@ def _check_args_train(
         if not isinstance(restart, int):
             raise TypeError(
                 "must pass ``restart`` as an int corresponding to the checkpoint"
-                + " epoch from which the simulation should be restarted."
+                " epoch from which the simulation should be restarted."
             )
     # If training on the TensorMap level
     if isinstance(in_train, TensorMap):
@@ -222,27 +222,30 @@ def _check_args_train(
         except AttributeError:
             raise AttributeError(
                 "if predicting at the TensorMap level, ``model`` must have a"
-                + " ``models`` attribute that is a dict of torch models for each block."
+                " ``models`` attribute that is a dict of torch models for"
+                " each block."
             )
         if not isinstance(model.models, dict):
             raise TypeError(
-                "if predicting on a TensorMap, ``model`` must be passed as a rholearn.models.GlobalModel"
-                + " object whose ``model.models`` attribute is a dict of torch models for each block,"
-                + " indexed by TensorMap keys"
+                "if predicting on a TensorMap, ``model`` must be passed as a"
+                " rholearn.models.GlobalModel object whose ``model.models``"
+                " attribute is a dict of torch models for each block,"
+                " indexed by TensorMap keys"
             )
         try:
             model.out_feature_labels
         except AttributeError:
             raise AttributeError(
                 "if predicting at the TensorMap level, ``model`` must have a"
-                + " ``out_feature_labels`` attribute that is a dict of Labels for"
-                + " the features/properties of each block."
+                " ``out_feature_labels`` attribute that is a dict of Labels for"
+                " the features/properties of each block."
             )
         if not isinstance(model.out_feature_labels, dict):
             raise TypeError(
-                "if predicting on a TensorMap, ``model`` must be passed as a rholearn.models.GlobalModel"
-                + " object whose ``model.out_feature_labels`` attribute is a dict of Labels objects for"
-                + " each block, indexed by TensorMap keys"
+                "if predicting on a TensorMap, ``model`` must be passed as a"
+                " rholearn.models.GlobalModel object whose ``out_feature_labels``"
+                " attribute is a dict of Labels objects for each block, indexed"
+                " by TensorMap keys"
             )
     # If training on the TensorBlock level
     elif isinstance(in_train, TensorBlock):
@@ -251,26 +254,28 @@ def _check_args_train(
         except AttributeError:
             raise AttributeError(
                 "if predicting at the TensorBlock level, ``model`` must have a"
-                + " ``model`` attribute that is a torch model."
+                " ``model`` attribute that is a torch model."
             )
         if not isinstance(model.model, torch.nn.Module):
             raise TypeError(
-                "if predicting on a TensorBlock, ``model`` must be passed as a rholearn.models.LocalModel"
-                + " object whose ``model.model`` attribute is a torch model"
+                "if predicting on a TensorBlock, ``model`` must be passed as a"
+                " rholearn.models.LocalModel object whose ``model``"
+                " attribute is a torch model"
             )
         try:
             model.out_feature_labels
         except AttributeError:
             raise AttributeError(
                 "if predicting at the TensorBlock level, ``model`` must have a"
-                + " ``out_feature_labels`` attribute that is a Labels object for"
-                + " the features/properties of the input block"
+                " ``out_feature_labels`` attribute that is a Labels object for"
+                " the features/properties of the input block"
             )
         if not isinstance(model.out_feature_labels, Labels):
             raise TypeError(
-                "if predicting on a TensorBlock, ``model`` must be passed as a rholearn.models.LocalModel"
-                + " object whose ``model.out_feature_labels`` attribute is a Labels object for"
-                + " the features/properties of the input block"
+                "if predicting on a TensorBlock, ``model`` must be passed as a"
+                " rholearn.models.LocalModel object whose ``out_feature_labels``"
+                " attribute is a Labels object for the features/properties of the"
+                " input block"
             )
     # Make prediction at the torch Tensor level
     elif isinstance(in_train, torch.Tensor):
@@ -287,12 +292,14 @@ def _check_args_train(
     tmp_key = list(model.in_feature_labels.keys())[0]
     if not isinstance(tmp_key, np.void):
         raise ValueError(
-            f"``model.in_feature_labels`` keys must be numpy.void objects, not {type(tmp_key)}"
+            "``model.in_feature_labels`` keys must be numpy.void objects,"
+            f" not {type(tmp_key)}"
         )
     tmp_key = list(model.out_feature_labels.keys())[0]
     if not isinstance(tmp_key, np.void):
         raise ValueError(
-            f"``model.out_feature_labels`` keys must be numpy.void objects, not {type(tmp_key)}"
+            "``model.out_feature_labels`` keys must be numpy.void objects,"
+            f" not {type(tmp_key)}"
         )
     # Check loss fn
     if isinstance(loss_fn, dict):
@@ -300,7 +307,7 @@ def _check_args_train(
             if k not in ["train", "test"]:
                 raise ValueError(
                     "if passing ``loss_fn`` as a dict, it must contain"
-                    + " 2 loss function objects indexed by keys 'train' and 'test'"
+                    " 2 loss function objects indexed by keys 'train' and 'test'"
                 )
     else:
         if not isinstance(loss_fn, torch.nn.Module):
