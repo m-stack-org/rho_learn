@@ -10,27 +10,18 @@ from typing import List, Optional
 import numpy as np
 
 import rascaline
-
-# HACK: force loading the version of equistore inside rascaline
-rascaline._c_lib._get_library()
-from rascaline import SphericalExpansion
-
 import equistore
 from equistore import io, Labels, TensorMap
 
-from rholearn.spherical import (
-    ClebschGordanReal,
-    acdc_standardize_keys,
-    cg_increment,
-)
-from rholearn.io import check_or_create_dir
+from rholearn import io, spherical, utils
 
 
 def lambda_soap_vector(
     frames: list,
     rascal_hypers: dict,
-    save_dir: Optional[str] = None,
     neighbor_species: Optional[List[int]] = None,
+    even_parity_only: bool = False,
+    save_dir: Optional[str] = None,
 ) -> TensorMap:
     """
     Takes a list of frames of ASE loaded structures and a dict of Rascaline
@@ -45,26 +36,32 @@ def lambda_soap_vector(
         TensorMap of the calculated lambda-SOAP representation and pickled
         ``rascal_hypers`` dict should be written. If none, the TensorMap will
         not be saved.
-    :param neighbor_species: a list of int that correspond to the atomic
-        charges of all the neighbour species that you want to be in your
-        properties (or features) dimension. This list may contain charges for
-        atoms that don't appear in ``frames``, but are included anyway so that
-        the one can enforce consistent properties dimension size with other
-        lambda SOAP feature vectors.
+    :param neighbor_species: a list of int that correspond to the atomic charges
+        of all the neighbour species that you want to be in your properties (or
+        features) dimension. This list may contain charges for atoms that don't
+        appear in ``frames``, but are included anyway so that the one can
+        enforce consistent properties dimension size with other lambda SOAP
+        feature vectors.
+    :param even_parity_only: a bool that determines whether to only include the
+        key/block pairs with even parity under rotation, i.e. sigma = +1.
+        Defaults to false, where both parities are included.
+
+    :return: a TensorMap of the lambda-SOAP representation vector of the input
+        frames.
     """
     # Create save directory
     if save_dir is not None:
-        check_or_create_dir(save_dir)
+        io.check_or_create_dir(save_dir)
 
     # Generate Rascaline hypers and Clebsch-Gordon coefficients
-    calculator = SphericalExpansion(**rascal_hypers)
-    cg = ClebschGordanReal(l_max=rascal_hypers["max_angular"])
+    calculator = rascaline.SphericalExpansion(**rascal_hypers)
+    cg = spherical.ClebschGordanReal(l_max=rascal_hypers["max_angular"])
 
     # Generate descriptor via Spherical Expansion
     acdc_nu1 = calculator.compute(frames)
 
     # nu=1 features
-    acdc_nu1 = acdc_standardize_keys(acdc_nu1)
+    acdc_nu1 = spherical.acdc_standardize_keys(acdc_nu1)
 
     # Move "species_neighbor" sparse keys to properties with enforced atom
     # charges if ``neighbor_species`` is specified. This is required as the CG
@@ -80,13 +77,27 @@ def lambda_soap_vector(
 
     # Combined nu=1 features to generate nu=2 features. lambda-SOAP is defined
     # as just the nu=2 features.
-    acdc_nu2 = cg_increment(
+    acdc_nu2 = spherical.cg_increment(
         acdc_nu1,
         acdc_nu1,
         clebsch_gordan=cg,
         lcut=rascal_hypers["max_angular"],
         other_keys_match=["species_center"],
     )
+
+    # Clean the lambda-SOAP TensorMap. Drop the order_nu key name as this is by
+    # definition 2 for all keys.
+    acdc_nu2 = utils.drop_key_name(acdc_nu2, key_name="order_nu")
+
+    if even_parity_only:
+        # Drop all odd parity keys/blocks
+        new_keys = acdc_nu2.keys[acdc_nu2.keys["inversion_sigma"] == +1]
+        acdc_nu2 = TensorMap(
+            keys=new_keys, blocks=[acdc_nu2[key].copy() for key in new_keys]
+        )
+        # Drop the inversion_sigma key name as this is now +1 for all
+        # keys/blocks
+        acdc_nu2 = utils.drop_key_name(acdc_nu2, key_name="inversion_sigma")
 
     # Write to file
     if save_dir is not None:
