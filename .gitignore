@@ -2,17 +2,21 @@
 build/
 rholearn.egg-info
 
-data/
-results/
+runs/
 simulations/
 experiments/
 
-# Ignore the folders/files produced in the running of the example azoswitch
-# notebooks
-docs/example/azoswitch/partitions
-docs/example/azoswitch/lambda_soap.npz
-docs/example/azoswitch/lambda_soap_cleaned.npz
-docs/example/azoswitch/rascal_hypers.pickle
+# Azoswitch example
+docs/example/azoswitch/data/partitions
+docs/example/azoswitch/data/coulomb_matrices.npz
+docs/example/azoswitch/data/lambda_soap.npz
+docs/example/azoswitch/data/lambda_soap_cleaned.npz
+docs/example/azoswitch/data/rascal_hypers.pickle
+
+# Water example
+docs/example/water/data/partitions
+docs/example/water/data/lambda_soap.npz
+docs/example/water/data/one_water_monomer.xyz
 
 .DS_Store
 
