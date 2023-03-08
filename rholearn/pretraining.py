@@ -58,17 +58,11 @@ from typing import List, Union, Optional
 import numpy as np
 import torch
 
-import equistore.io
+import equistore
 from equistore import Labels, TensorMap
-from equistore.metaoperations import unique
-from equistore.operations import slice, split
+from equisolve.utils import split_data
 
-from equisolve.utils.split_data import split_data
-
-import rholearn.io
-from rholearn.loss import CoulombLoss, MSELoss, VALID_LOSS_FNS
-from rholearn.models import EquiModelGlobal, VALID_MODEL_TYPES
-from rholearn import utils
+from rholearn import io, loss, models, pretraining, utils
 
 
 def partition_data(settings: dict):
@@ -132,7 +126,7 @@ def partition_data(settings: dict):
     ```
     """
     # Check/create data directory
-    rholearn.io.check_or_create_dir(settings["io"]["data_dir"])
+    io.check_or_create_dir(settings["io"]["data_dir"])
 
     # Load the input and output data from the paths specified in settings
     print(f"Loading input and output TensorMaps")
@@ -143,7 +137,7 @@ def partition_data(settings: dict):
     print(
         f"Saving data partitioning settings to .txt and .pickle in {settings['io']['data_dir']}"
     )
-    rholearn.io.pickle_dict(
+    io.pickle_dict(
         path=os.path.join(settings["io"]["data_dir"], "settings.pickle"), dict=settings
     )
     with open(os.path.join(settings["io"]["data_dir"], "settings.txt"), "w+") as f:
@@ -164,9 +158,8 @@ def partition_data(settings: dict):
         axis="samples",
         names=settings["train_test_split"]["names"],
         n_groups=settings["train_test_split"]["n_groups"],
-        group_sizes_rel=settings["train_test_split"].get("group_sizes_rel"),
-        group_sizes_abs=settings["train_test_split"].get("group_sizes_abs"),
-        random_seed=settings["numpy"]["random_seed"],
+        group_sizes=settings["train_test_split"].get("group_sizes"),
+        seed=settings["numpy"]["random_seed"],
     )
 
     if settings["train_test_split"]["n_groups"] == 2:
@@ -175,7 +168,7 @@ def partition_data(settings: dict):
 
         # Check that the samples and components indices are exactly equal
         for (a, b) in [(in_train, out_train), (in_test, out_test)]:
-            utils.equivalent_metadata(a, b, properties=False)
+            assert utils.equal_metadata(a, b, check=["samples", "components"])
 
         # Define the filenames to save the structure indices of the partitioned data
         assert len(grouped_indices) == 2
@@ -194,7 +187,7 @@ def partition_data(settings: dict):
 
         # Check that the samples and components indices are exactly equal
         for (a, b) in [(in_train, out_train), (in_test, out_test), (in_val, out_val)]:
-            utils.equivalent_metadata(a, b, properties=False)
+            assert utils.equal_metadata(a, b, check=["samples", "components"])
 
         # Define the filenames to save the structure indices of the partitioned data
         assert len(grouped_indices) == 3
@@ -221,12 +214,7 @@ def partition_data(settings: dict):
     for name, tm in tm_files.items():
         equistore.io.save(os.path.join(settings["io"]["data_dir"], name), tm)
 
-    # Get the unique sample structure indices of the data
-    # train_structure_idxs = unique_indices(
-    #     tensors=[in_train, out_train],
-    #     axis="samples",
-    #     names=["structure"],
-    # )
+    # Define the train structure indices
     train_structure_idxs = grouped_indices[0]
 
     # Get train subset sizes (evenly spaced on log base e scale) and write to file
@@ -251,7 +239,7 @@ def partition_data(settings: dict):
             np.random.shuffle(train_structure_idxs)
         # Create the directories and training data for each subset
         print(f"Creating training subsets for learning exercise {exercise_i}")
-        learning_subsets(
+        pretraining.create_learning_subsets(
             in_train=in_train,
             out_train=out_train,
             subset_sizes=subset_sizes,
@@ -260,7 +248,7 @@ def partition_data(settings: dict):
         )
 
 
-def learning_subsets(
+def create_learning_subsets(
     in_train: TensorMap,
     out_train: TensorMap,
     subset_sizes: np.array,
@@ -280,19 +268,19 @@ def learning_subsets(
     respectively.
     """
     # Save the (shuffled) sample indices and subset sizes to file
-    rholearn.io.check_or_create_dir(save_dir)
+    io.check_or_create_dir(save_dir)
     np.save(os.path.join(save_dir, "structure_idxs_train.npy"), train_structure_idxs)
     # Partition the training data and save the resulting TensorMaps to file
     for subset_i, n_train in enumerate(subset_sizes):
         # Create save directory for this training subset
         subset_save_dir = os.path.join(save_dir, f"subset_{subset_i}")
-        rholearn.io.check_or_create_dir(subset_save_dir)
+        io.check_or_create_dir(subset_save_dir)
         # Define the input and output training subset used for this exercise
-        in_train_subset = slice(
+        in_train_subset = equistore.slice(
             tensor=in_train,
             samples=train_structure_idxs[:n_train],
         )
-        out_train_subset = slice(
+        out_train_subset = equistore.slice(
             tensor=out_train,
             samples=train_structure_idxs[:n_train],
         )
@@ -313,13 +301,13 @@ def construct_torch_objects(settings: dict):
     with the subdirectory structure <run_dir>/exercise_i/subset_j.
     """
     # Create run dir if not exists
-    rholearn.io.check_or_create_dir(settings["io"]["run_dir"])
+    io.check_or_create_dir(settings["io"]["run_dir"])
 
     # Save settings to pickle and txt files
     print(
         f"Saving training settings to .txt and .pickle in {settings['io']['run_dir']}"
     )
-    rholearn.io.pickle_dict(
+    io.pickle_dict(
         path=os.path.join(settings["io"]["run_dir"], "settings.pickle"), dict=settings
     )
     with open(os.path.join(settings["io"]["run_dir"], "settings.txt"), "w+") as f:
@@ -340,7 +328,7 @@ def construct_torch_objects(settings: dict):
     print("Building and saving torch objects in directory:")
     for exercise_i in range(settings["data_partitions"]["n_exercises"]):
         # Create a dir for this exercise
-        rholearn.io.check_or_create_dir(
+        io.check_or_create_dir(
             os.path.join(settings["io"]["run_dir"], f"exercise_{exercise_i}")
         )
         for subset_j in range(settings["data_partitions"]["n_subsets"]):
@@ -349,13 +337,13 @@ def construct_torch_objects(settings: dict):
             )
 
             # Load (to torch) input and ouput data from the data directory
-            in_train = rholearn.io.load_tensormap_to_torch(
+            in_train = io.load_tensormap_to_torch(
                 os.path.join(
                     settings["io"]["data_dir"], subset_rel_dir, "in_train.npz"
                 ),
                 **settings["torch"],
             )
-            out_train = rholearn.io.load_tensormap_to_torch(
+            out_train = io.load_tensormap_to_torch(
                 os.path.join(
                     settings["io"]["data_dir"], subset_rel_dir, "out_train.npz"
                 ),
@@ -364,7 +352,7 @@ def construct_torch_objects(settings: dict):
 
             # Create a dir for this subset
             run_dir = os.path.join(settings["io"]["run_dir"], subset_rel_dir)
-            rholearn.io.check_or_create_dir(run_dir)
+            io.check_or_create_dir(run_dir)
             print(run_dir)
 
             # Define some args for initializing the model
@@ -384,7 +372,7 @@ def construct_torch_objects(settings: dict):
                     key: len(invariants[key[1]].properties) for key in in_train.keys
                 }
             # Create model and save
-            model = EquiModelGlobal(
+            model = models.EquiModelGlobal(
                 model_type=settings["model"]["type"],
                 keys=keys,
                 in_feature_labels={key: in_train[key].properties for key in keys},
@@ -392,7 +380,7 @@ def construct_torch_objects(settings: dict):
                 in_invariant_features=in_invariant_features,
                 **settings["model"]["args"],
             )
-            rholearn.io.save_torch_object(
+            io.save_torch_object(
                 torch_obj=model,
                 path=os.path.join(run_dir, "model.pt"),
                 torch_obj_str="model",
@@ -401,12 +389,12 @@ def construct_torch_objects(settings: dict):
             # If using CoulombLoss: create train loss, save train and test loss
             if settings["loss"]["fn"] == "CoulombLoss":
                 loss_fn = _init_coulomb_loss_fn(settings, output_like=out_train)
-                rholearn.io.save_torch_object(
+                io.save_torch_object(
                     torch_obj=loss_fn,
                     path=os.path.join(run_dir, "loss_fn.pt"),
                     torch_obj_str="loss_fn",
                 )
-                rholearn.io.save_torch_object(
+                io.save_torch_object(
                     torch_obj=loss_fn_test,
                     path=os.path.join(run_dir, "loss_fn_test.pt"),
                     torch_obj_str="loss_fn",
@@ -429,7 +417,11 @@ def load_training_objects(
     checkpoint directory, i.e. ".../subset_{``subset``}/epoch_{``restart``}/" so
     that simulations can be continued from where they were left off.
 
-    Returns ``in_train``, ``out_train``, ``model``, ``loss_fn``, ``optimizer``.
+    :return tensors: a list of [in_train, in_test, out_train, out_test], i.e.
+        the split training and test data
+    :return model: the torch model
+    :return loss_fn: the torch loss function
+    :return optimizer: the torch optimizer
     """
     # IMPORTANT: set the torch default dtype
     torch.set_default_dtype(settings["torch"]["dtype"])
@@ -442,13 +434,27 @@ def load_training_objects(
         settings["io"]["run_dir"], f"exercise_{exercise}", f"subset_{subset}"
     )
 
-    # Load the training data
-    in_train = rholearn.io.load_tensormap_to_torch(
-        os.path.join(subset_data_dir, "in_train.npz"), **settings["torch"]
-    )
-    out_train = rholearn.io.load_tensormap_to_torch(
-        os.path.join(subset_data_dir, "out_train.npz"), **settings["torch"]
-    )
+    # Load input and output train and test data
+    in_train = equistore.io.load(os.path.join(subset_data_dir, "in_train.npz"))
+    out_train = equistore.io.load(os.path.join(subset_data_dir, "out_train.npz"))
+    in_test = equistore.io.load(os.path.join(settings["io"]["data_dir"], "in_test.npz"))
+    out_test = equistore.io.load(os.path.join(settings["io"]["data_dir"], "out_test.npz"))
+
+    # Standardize the invariant blocks of out_train and out_test
+    if settings["training"]["standardize_invariant_features"]:
+        # Calculate the means of the invariant features
+        train_inv_means = utils.get_invariant_means(out_train)
+        # Standardize the train and test data with the train means
+        out_train = utils.standardize_invariants(out_train, train_inv_means)
+        out_test = utils.standardize_invariants(out_test, train_inv_means)
+        # Save the invariant means to file
+        equistore.io.save(os.path.join(subset_data_dir, "inv_means.npz"), train_inv_means)
+
+    # Convert the tensors to torch
+    in_train = utils.tensor_to_torch(in_train, **settings["torch"])
+    in_test = utils.tensor_to_torch(in_test, **settings["torch"])
+    out_train = utils.tensor_to_torch(out_train, **settings["torch"])
+    out_test = utils.tensor_to_torch(out_test, **settings["torch"])
 
     # Load model
     model_path = (
@@ -458,7 +464,7 @@ def load_training_objects(
     )
 
     if os.path.exists(model_path):
-        model = rholearn.io.load_torch_object(
+        model = io.load_torch_object(
             path=model_path, device=settings["torch"]["device"], torch_obj_str="model"
         )
     else:
@@ -469,14 +475,14 @@ def load_training_objects(
     # Load the loss functions, if present
     loss_fn_path = os.path.join(subset_run_dir, "loss_fn.pt")
     if os.path.exists(loss_fn_path):
-        loss_fn = rholearn.io.load_torch_object(
+        loss_fn = io.load_torch_object(
             path=loss_fn_path,
             device=settings["torch"]["device"],
             torch_obj_str="loss_fn",
         )
         loss_fn_test_path = os.path.join(subset_run_dir, "loss_fn_test.pt")
         if os.path.exists(loss_fn_path):
-            loss_fn_test = rholearn.io.load_torch_object(
+            loss_fn_test = io.load_torch_object(
                 path=loss_fn_test_path,
                 device=settings["torch"]["device"],
                 torch_obj_str="loss_fn",
@@ -500,7 +506,7 @@ def load_training_objects(
             )
             loss_fn = {"train": loss_fn_train, "test": loss_fn_test}
         elif settings["loss"]["fn"] == "MSELoss":
-            loss_fn = MSELoss(reduction=settings["loss"]["args"]["reduction"])
+            loss_fn = loss.MSELoss(reduction=settings["loss"]["args"]["reduction"])
         else:
             raise NotImplementedError(
                 "only CoulombLoss and MSELoss functions currently implemented."
@@ -522,7 +528,7 @@ def load_training_objects(
             lr=settings["optimizer"]["args"]["lr"],
         )
 
-    return [in_train, out_train, model, loss_fn, optimizer]
+    return [in_train, in_test, out_train, out_test], model, loss_fn, optimizer
 
 
 def _init_coulomb_loss_fn(
@@ -547,12 +553,12 @@ def _init_coulomb_loss_fn(
             f"coulomb matrices at path {settings['io']['coulomb']} do not exist"
         )
     # Load coulomb matrices
-    coulomb_matrices = rholearn.io.load_tensormap_to_torch(
+    coulomb_matrices = io.load_tensormap_to_torch(
         os.path.join(settings["io"]["coulomb"]),
         **settings["torch"],
     )
     # Build Coulomb loss function
-    loss_fn = CoulombLoss(
+    loss_fn = loss.CoulombLoss(
         coulomb_matrices=coulomb_matrices,
         output_like=output_like,
     )
