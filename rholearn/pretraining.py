@@ -59,7 +59,9 @@ import numpy as np
 import torch
 
 import equistore
+import equistore.io
 from equistore import Labels, TensorMap
+
 from equisolve.utils import split_data
 
 from rholearn import io, loss, models, pretraining, utils
@@ -336,86 +338,165 @@ def construct_torch_objects(settings: dict):
                 f"exercise_{exercise_i}", f"subset_{subset_j}"
             )
 
-            # Load (to torch) input and ouput data from the data directory
-            in_train = io.load_tensormap_to_torch(
-                os.path.join(
-                    settings["io"]["data_dir"], subset_rel_dir, "in_train.npz"
-                ),
-                **settings["torch"],
-            )
-            out_train = io.load_tensormap_to_torch(
-                os.path.join(
-                    settings["io"]["data_dir"], subset_rel_dir, "out_train.npz"
-                ),
-                **settings["torch"],
+            construct_torch_objects_in_train_dir(
+                settings,
+                data_dir=os.path.join(settings["io"]["data_dir"], subset_rel_dir),
+                run_dir=os.path.join(settings["io"]["run_dir"], subset_rel_dir),
             )
 
-            # Create a dir for this subset
-            run_dir = os.path.join(settings["io"]["run_dir"], subset_rel_dir)
-            io.check_or_create_dir(run_dir)
-            print(run_dir)
+            # # Load (to torch) input and ouput data from the data directory
+            # in_train = io.load_tensormap_to_torch(
+            #     os.path.join(
+            #         settings["io"]["data_dir"], subset_rel_dir, "in_train.npz"
+            #     ),
+            #     **settings["torch"],
+            # )
+            # out_train = io.load_tensormap_to_torch(
+            #     os.path.join(
+            #         settings["io"]["data_dir"], subset_rel_dir, "out_train.npz"
+            #     ),
+            #     **settings["torch"],
+            # )
 
-            # Define some args for initializing the model
-            keys = in_train.keys
-            in_invariant_features = None
-            if settings["model"]["type"] == "nonlinear":
-                # If using a nonlinear model, the size of the
-                # properties/features dimension of the nonlinear invariant
-                # multipliers needs to passed to EquiModelGlobal
-                invariants = {
-                    specie: in_train.block(
-                        spherical_harmonics_l=0, species_center=specie
-                    )
-                    for specie in np.unique(in_train.keys["species_center"])
-                }
-                in_invariant_features = {
-                    key: len(invariants[key[1]].properties) for key in in_train.keys
-                }
-            # Create model and save
-            model = models.EquiModelGlobal(
-                model_type=settings["model"]["type"],
-                keys=keys,
-                in_feature_labels={key: in_train[key].properties for key in keys},
-                out_feature_labels={key: out_train[key].properties for key in keys},
-                in_invariant_features=in_invariant_features,
-                **settings["model"]["args"],
-            )
-            io.save_torch_object(
-                torch_obj=model,
-                path=os.path.join(run_dir, "model.pt"),
-                torch_obj_str="model",
-            )
+            # # Create a dir for this subset
+            # run_dir = os.path.join(settings["io"]["run_dir"], subset_rel_dir)
+            # io.check_or_create_dir(run_dir)
+            # print(run_dir)
 
-            # If using CoulombLoss: create train loss, save train and test loss
-            if settings["loss"]["fn"] == "CoulombLoss":
-                loss_fn = _init_coulomb_loss_fn(settings, output_like=out_train)
-                io.save_torch_object(
-                    torch_obj=loss_fn,
-                    path=os.path.join(run_dir, "loss_fn.pt"),
-                    torch_obj_str="loss_fn",
-                )
-                io.save_torch_object(
-                    torch_obj=loss_fn_test,
-                    path=os.path.join(run_dir, "loss_fn_test.pt"),
-                    torch_obj_str="loss_fn",
-                )
+            # # Define some args for initializing the model
+            # keys = in_train.keys
+            # in_invariant_features = None
+            # if settings["model"]["type"] == "nonlinear":
+            #     # If using a nonlinear model, the size of the
+            #     # properties/features dimension of the nonlinear invariant
+            #     # multipliers needs to passed to EquiModelGlobal
+            #     invariants = {
+            #         specie: in_train.block(
+            #             spherical_harmonics_l=0, species_center=specie
+            #         )
+            #         for specie in np.unique(in_train.keys["species_center"])
+            #     }
+            #     in_invariant_features = {
+            #         key: len(invariants[key[1]].properties) for key in in_train.keys
+            #     }
+            # # Create model and save
+            # model = models.EquiModelGlobal(
+            #     model_type=settings["model"]["type"],
+            #     keys=keys,
+            #     in_feature_labels={key: in_train[key].properties for key in keys},
+            #     out_feature_labels={key: out_train[key].properties for key in keys},
+            #     in_invariant_features=in_invariant_features,
+            #     **settings["model"]["args"],
+            # )
+            # io.save_torch_object(
+            #     torch_obj=model,
+            #     path=os.path.join(run_dir, "model.pt"),
+            #     torch_obj_str="model",
+            # )
+
+            # # If using CoulombLoss: create train loss, save train and test loss
+            # if settings["loss"]["fn"] == "CoulombLoss":
+            #     loss_fn = _init_coulomb_loss_fn(settings, output_like=out_train)
+            #     io.save_torch_object(
+            #         torch_obj=loss_fn,
+            #         path=os.path.join(run_dir, "loss_fn.pt"),
+            #         torch_obj_str="loss_fn",
+            #     )
+            #     io.save_torch_object(
+            #         torch_obj=loss_fn_test,
+            #         path=os.path.join(run_dir, "loss_fn_test.pt"),
+            #         torch_obj_str="loss_fn",
+            #     )
+
+
+def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir: str):
+    """
+    Loads training data from the data directory `data_dir` and constructs
+    relevant torch objects, saving them to the run directory `run_dir`.
+    """
+    # Load (to torch) input and ouput data from the data directory
+    in_train = io.load_tensormap_to_torch(
+        os.path.join(data_dir, "in_train.npz"),
+        **settings["torch"],
+    )
+    out_train = io.load_tensormap_to_torch(
+        os.path.join(data_dir, "out_train.npz"),
+        **settings["torch"],
+    )
+
+    # Create a dir for this subset
+    io.check_or_create_dir(run_dir)
+    print(run_dir)
+
+    # Define some args for initializing the model
+    keys = in_train.keys
+    in_invariant_features = None
+    if settings["model"]["type"] == "nonlinear":
+        # If using a nonlinear model, the size of the
+        # properties/features dimension of the nonlinear invariant
+        # multipliers needs to passed to EquiModelGlobal
+        invariants = {
+            specie: in_train.block(spherical_harmonics_l=0, species_center=specie)
+            for specie in np.unique(in_train.keys["species_center"])
+        }
+        in_invariant_features = {
+            key: len(invariants[key[1]].properties) for key in in_train.keys
+        }
+    # Create model and save
+    model = models.EquiModelGlobal(
+        model_type=settings["model"]["type"],
+        keys=keys,
+        in_feature_labels={key: in_train[key].properties for key in keys},
+        out_feature_labels={key: out_train[key].properties for key in keys},
+        in_invariant_features=in_invariant_features,
+        **settings["model"]["args"],
+    )
+    io.save_torch_object(
+        torch_obj=model,
+        path=os.path.join(run_dir, "model.pt"),
+        torch_obj_str="model",
+    )
+
+    # If using CoulombLoss: create train loss, save train and test loss
+    if settings["loss"]["fn"] == "CoulombLoss":
+        loss_fn = _init_coulomb_loss_fn(settings, output_like=out_train)
+        io.save_torch_object(
+            torch_obj=loss_fn,
+            path=os.path.join(run_dir, "loss_fn.pt"),
+            torch_obj_str="loss_fn",
+        )
+        io.save_torch_object(
+            torch_obj=loss_fn_test,
+            path=os.path.join(run_dir, "loss_fn_test.pt"),
+            torch_obj_str="loss_fn",
+        )
 
 
 def load_training_objects(
     settings: dict,
-    exercise: int,
-    subset: int,
+    train_rel_dir: str,
     restart: Optional[int] = None,
 ) -> list:
     """
-    From the relative training subdirectory
-    "{``settings["io"]["run_dir"]``}/exercise_{``exercise``}/subset_{``subset``}/"
-    loads the torch objects "model.pt", and "loss_fn.pt" and "optimizer.pt" if
-    present. If not present, constructs them. If using CoulombLoss,
-    "loss_fn_test.pt" is also loaded/constructed. If ``restart`` is specified,
-    the "model.pt" and "optimizer.pt" are loaded from the indicated epoch
-    checkpoint directory, i.e. ".../subset_{``subset``}/epoch_{``restart``}/" so
-    that simulations can be continued from where they were left off.
+    Returns in the input and output data, the model, loss function, and
+    optimizer, either by loading them from file if present, or constructing
+    them.
+
+    From the relative training subdirectory `train_rel_dir` loads the torch objects
+    "model.pt", and "loss_fn.pt" and "optimizer.pt" if present. If not present,
+    constructs them. If using CoulombLoss, "loss_fn_test.pt" is also
+    loaded/constructed. If ``restart`` is specified, the "model.pt" and
+    "optimizer.pt" are loaded from the indicated epoch checkpoint directory,
+    i.e. "train_rel_dir/epoch_{``restart``}/" so that simulations can be continued
+    from where they were left off.
+
+    :param settings: a dict of settings
+    :param train_rel_dir: the relative training subdirectory. Data is loaded from
+        this directory, relative to path ``settings["io"]["data_dir"]``, whilst
+        training objects are loaded/saved to the path relative to
+        ``settings["io"]["run_dir"]``.
+    :param restart: the epoch to restart from. If specified, the model and
+        optimizer are loaded from this specified epoch checkpoint directory.
 
     :return tensors: a list of [in_train, in_test, out_train, out_test], i.e.
         the split training and test data
@@ -426,19 +507,17 @@ def load_training_objects(
     # IMPORTANT: set the torch default dtype
     torch.set_default_dtype(settings["torch"]["dtype"])
 
-    # Define the subset data and run directories
-    subset_data_dir = os.path.join(
-        settings["io"]["data_dir"], f"exercise_{exercise}", f"subset_{subset}"
-    )
-    subset_run_dir = os.path.join(
-        settings["io"]["run_dir"], f"exercise_{exercise}", f"subset_{subset}"
-    )
+    # Define the data and run training directories
+    train_data_dir = os.path.join(settings["io"]["data_dir"], train_rel_dir)
+    train_run_dir = os.path.join(settings["io"]["run_dir"], train_rel_dir)
 
     # Load input and output train and test data
-    in_train = equistore.io.load(os.path.join(subset_data_dir, "in_train.npz"))
-    out_train = equistore.io.load(os.path.join(subset_data_dir, "out_train.npz"))
+    in_train = equistore.io.load(os.path.join(train_data_dir, "in_train.npz"))
+    out_train = equistore.io.load(os.path.join(train_data_dir, "out_train.npz"))
     in_test = equistore.io.load(os.path.join(settings["io"]["data_dir"], "in_test.npz"))
-    out_test = equistore.io.load(os.path.join(settings["io"]["data_dir"], "out_test.npz"))
+    out_test = equistore.io.load(
+        os.path.join(settings["io"]["data_dir"], "out_test.npz")
+    )
 
     # Standardize the invariant blocks of out_train and out_test
     if settings["training"]["standardize_invariant_features"]:
@@ -448,7 +527,9 @@ def load_training_objects(
         out_train = utils.standardize_invariants(out_train, train_inv_means)
         out_test = utils.standardize_invariants(out_test, train_inv_means)
         # Save the invariant means to file
-        equistore.io.save(os.path.join(subset_data_dir, "inv_means.npz"), train_inv_means)
+        equistore.io.save(
+            os.path.join(train_data_dir, "inv_means.npz"), train_inv_means
+        )
 
     # Convert the tensors to torch
     in_train = utils.tensor_to_torch(in_train, **settings["torch"])
@@ -458,9 +539,9 @@ def load_training_objects(
 
     # Load model
     model_path = (
-        os.path.join(subset_run_dir, "model.pt")
+        os.path.join(train_run_dir, "model.pt")
         if restart is None
-        else os.path.join(subset_run_dir, f"epoch_{restart}", "model.pt")
+        else os.path.join(train_run_dir, f"epoch_{restart}", "model.pt")
     )
 
     if os.path.exists(model_path):
@@ -473,14 +554,14 @@ def load_training_objects(
             + " stored in the training directory"
         )
     # Load the loss functions, if present
-    loss_fn_path = os.path.join(subset_run_dir, "loss_fn.pt")
+    loss_fn_path = os.path.join(train_run_dir, "loss_fn.pt")
     if os.path.exists(loss_fn_path):
         loss_fn = io.load_torch_object(
             path=loss_fn_path,
             device=settings["torch"]["device"],
             torch_obj_str="loss_fn",
         )
-        loss_fn_test_path = os.path.join(subset_run_dir, "loss_fn_test.pt")
+        loss_fn_test_path = os.path.join(train_run_dir, "loss_fn_test.pt")
         if os.path.exists(loss_fn_path):
             loss_fn_test = io.load_torch_object(
                 path=loss_fn_test_path,
@@ -514,9 +595,9 @@ def load_training_objects(
 
     # Load/create the optimizer
     opt_state_dict_path = (
-        os.path.join(subset_run_dir, "optimizer.pt")
+        os.path.join(train_run_dir, "optimizer.pt")
         if restart is None
-        else os.path.join(subset_run_dir, f"epoch_{restart}", "optimizer.pt")
+        else os.path.join(train_run_dir, f"epoch_{restart}", "optimizer.pt")
     )
     if os.path.exists(opt_state_dict_path):
         opt_state_dict = torch.load(opt_state_dict_path)
