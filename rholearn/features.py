@@ -11,7 +11,7 @@ import numpy as np
 
 import rascaline
 import equistore
-from equistore import io, Labels, TensorMap
+from equistore import Labels, TensorMap
 
 from rholearn import io, spherical, utils
 
@@ -105,7 +105,7 @@ def lambda_soap_vector(
         with open(os.path.join(save_dir, "rascal_hypers.pickle"), "wb") as handle:
             pickle.dump(rascal_hypers, handle, protocol=pickle.HIGHEST_PROTOCOL)
         # Lambda-SOAP
-        io.save(os.path.join(save_dir, "lambda_soap.npz"), acdc_nu2)
+        eequistore.save(os.path.join(save_dir, "lambda_soap.npz"), acdc_nu2)
 
     return acdc_nu2
 

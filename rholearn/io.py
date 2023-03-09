@@ -62,13 +62,13 @@ def load_tensormap_to_torch(
     path: str, requires_grad: bool, dtype: torch.dtype, device: torch.device
 ):
     """
-    Loads a TensorMap using equistore.io, then converts its block values to
+    Loads a TensorMap using equistore.load, then converts its block values to
     torch tensors with the specified grad, dtype, and device options.
     """
     if not os.path.exists(path):
         raise FileNotFoundError(f"file at path {path} does not exist")
     return utils.tensor_to_torch(
-        equistore.io.load(path), requires_grad=requires_grad, dtype=dtype, device=device
+        equistore.load(path), requires_grad=requires_grad, dtype=dtype, device=device
     )
 
 

@@ -230,7 +230,7 @@ def make_contiguous_numpy(tensor: TensorMap) -> TensorMap:
     """
     Takes a TensorMap whose block values are ndarrays and ensures they are
     contiguous. Allows tensors produced by slicing/splitting to be saved to file
-    using the equistore.io.save method.
+    using the equistore.save method.
     """
 
     new_blocks = []

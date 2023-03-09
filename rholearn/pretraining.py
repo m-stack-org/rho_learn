@@ -59,7 +59,6 @@ import numpy as np
 import torch
 
 import equistore
-import equistore.io
 from equistore import Labels, TensorMap
 
 from equisolve.utils import split_data
@@ -132,8 +131,8 @@ def partition_data(settings: dict):
 
     # Load the input and output data from the paths specified in settings
     print(f"Loading input and output TensorMaps")
-    input = equistore.io.load(settings["io"]["input"])
-    output = equistore.io.load(settings["io"]["output"])
+    input = equistore.load(settings["io"]["input"])
+    output = equistore.load(settings["io"]["output"])
 
     # Save settings to pickle and txt files
     print(
@@ -214,7 +213,7 @@ def partition_data(settings: dict):
 
     # Save the TensorMaps to file
     for name, tm in tm_files.items():
-        equistore.io.save(os.path.join(settings["io"]["data_dir"], name), tm)
+        equistore.save(os.path.join(settings["io"]["data_dir"], name), tm)
 
     # Define the train structure indices
     train_structure_idxs = grouped_indices[0]
@@ -287,10 +286,10 @@ def create_learning_subsets(
             samples=train_structure_idxs[:n_train],
         )
         # Save in_train, out_train to file
-        equistore.io.save(
+        equistore.save(
             os.path.join(subset_save_dir, "in_train.npz"), in_train_subset
         )
-        equistore.io.save(
+        equistore.save(
             os.path.join(subset_save_dir, "out_train.npz"), out_train_subset
         )
 
@@ -320,7 +319,7 @@ def construct_torch_objects(settings: dict):
 
     # Create test loss fn if using CoulombLoss
     if settings["loss"]["fn"] == "CoulombLoss":
-        out_test = equistore.io.load(
+        out_test = equistore.load(
             os.path.join(settings["io"]["data_dir"], "out_test.npz")
         )
         loss_fn_test = _init_coulomb_loss_fn(settings, output_like=out_test)
@@ -512,10 +511,10 @@ def load_training_objects(
     train_run_dir = os.path.join(settings["io"]["run_dir"], train_rel_dir)
 
     # Load input and output train and test data
-    in_train = equistore.io.load(os.path.join(train_data_dir, "in_train.npz"))
-    out_train = equistore.io.load(os.path.join(train_data_dir, "out_train.npz"))
-    in_test = equistore.io.load(os.path.join(settings["io"]["data_dir"], "in_test.npz"))
-    out_test = equistore.io.load(
+    in_train = equistore.load(os.path.join(train_data_dir, "in_train.npz"))
+    out_train = equistore.load(os.path.join(train_data_dir, "out_train.npz"))
+    in_test = equistore.load(os.path.join(settings["io"]["data_dir"], "in_test.npz"))
+    out_test = equistore.load(
         os.path.join(settings["io"]["data_dir"], "out_test.npz")
     )
 
@@ -527,7 +526,7 @@ def load_training_objects(
         out_train = utils.standardize_invariants(out_train, train_inv_means)
         out_test = utils.standardize_invariants(out_test, train_inv_means)
         # Save the invariant means to file
-        equistore.io.save(
+        equistore.save(
             os.path.join(train_data_dir, "inv_means.npz"), train_inv_means
         )
 
@@ -579,7 +578,7 @@ def load_training_objects(
                 settings=settings, output_like=out_train
             )
             # Build test loss fn
-            out_test = equistore.io.load(
+            out_test = equistore.load(
                 os.path.join(settings["io"]["data_dir"], "out_test.pt")
             )
             loss_fn_test = _init_coulomb_loss_fn(
