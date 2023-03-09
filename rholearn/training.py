@@ -92,7 +92,7 @@ def train(
                 f" train {np.round(losses_train[-1], 10)}"
                 f" test {np.round(losses_test[-1], 10)}"
             )
-            print(msg)
+            # print(msg)
             with open(os.path.join(save_dir, "log.txt"), "a+") as f:
                 f.write("\n" + msg)
 
