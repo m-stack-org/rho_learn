@@ -628,24 +628,6 @@ def drop_metadata_name(tensor: TensorMap, axis: str, name: str) -> TensorMap:
     )
 
 
-def drop_blocks(tensor: TensorMap, keys: Labels) -> TensorMap:
-    """
-    Drop specified key/block pairs from a TensorMap.
-
-    :param tensor: the TensorMap to drop the key-block pair from.
-    :param keys: the key Labels of the blocks to drop
-
-    :return: the input TensorMap with the specified key/block pairs dropped.
-    """
-    if not np.all(tensor.keys.names == keys.names):
-        raise ValueError(
-            "The input tensor's keys must have the same names as the specified"
-            f" keys to drop. Should be {tensor.keys.names} but got {keys.names}"
-        )
-    new_keys = np.setdiff1d(tensor.keys, keys)
-    return TensorMap(keys=new_keys, blocks=[tensor[key].copy() for key in new_keys])
-
-
 def pad_with_empty_blocks(
     input: TensorMap, target: TensorMap, slice_axis: str = "samples"
 ) -> TensorMap:
