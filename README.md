@@ -127,7 +127,7 @@ be installed in the ``rho`` environment. Ensure you install these **in the order
 shown below** (this is very important) and with the exact commands, as some
 development branches are required for this setup.
 
-  2. **rascaline**: ``pip install git+https://github.com/jwa7/rascaline.git@integrate-new-equistore``
+  2. **rascaline**: ``pip install git+https://github.com/luthaf/rascaline.git@rholearn``
 
   3. **equisolve**: ``pip install git+https://github.com/lab-cosmo/equisolve.git@rholearn``
 
