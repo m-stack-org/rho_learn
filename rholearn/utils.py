@@ -14,6 +14,7 @@ from equistore.operations import _utils
 #       - drop_blocks
 #       - labels_equal
 #       - equal_metadata
+#       - tensor_to_torch/numpy, block_to_torch/numpy
 
 # ===== tensors to torch fxns
 
