@@ -17,6 +17,8 @@ docs/example/azoswitch/data/rascal_hypers.pickle
 docs/example/water/data/partitions
 docs/example/water/data/lambda_soap.npz
 docs/example/water/data/one_water_monomer.xyz
+docs/example/water/data/in*.npz
+docs/example/water/data/out*.npz
 
 .DS_Store
 
