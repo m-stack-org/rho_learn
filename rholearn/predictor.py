@@ -6,20 +6,25 @@ from typing import Optional
 
 import ase.io
 import numpy as np
+import pyscf
 import torch
+
+import equistore
+from equistore import TensorMap
 
 import qstack
 from qstack import equio
+
 from rholearn import io, features, utils
 
 
-def predict_density(
+def predict_density_from_xyz(
     xyz_path: str,
     rascal_hypers: dict,
     model_path: str,
     basis: str,
     inv_means_path: Optional[str] = None,
-):
+) -> np.ndarray:
     """
     Loads a xyz file of structure(s) at `xyz_path` and uses the `rascal_hypers`
     to generate a lambda-SOAP structural representation. Loads the the
@@ -57,29 +62,66 @@ def predict_density(
     )
 
     # Drop blocks from input that aren't present in the model
-    input = utils.drop_blocks(input, keys=np.setdiff1d(input.keys, model.keys))
+    input = equistore.drop_blocks(input, keys=np.setdiff1d(input.keys, model.keys))
 
     # Convert the input TensorMap to torch
     input = utils.tensor_to_torch(
         input, requires_grad=False, dtype=torch.float64, device=torch.device("cpu")
     )
 
-    # Make a prediction
+    return predict_density_from_mol(mol, input, model_path, inv_means_path)
+
+
+def predict_density_from_mol(
+    input: TensorMap,
+    mol: pyscf.gto.Mole,
+    model_path: str,
+    inv_means_path: Optional[str] = None,
+) -> np.ndarray:
+    """
+    Loads the the pretrained torch model from `model_path` and uses it to make a
+    prediction on the electron density. Returns the prediction both as a
+    TensorMap and as a vector of coefficients.
+
+    :param input: a TensorMap containing the lambda-SOAP representation of the
+        structure to predict the density for.
+    :param mol: a PySCF :py:class:`Mole` object, initialized with the correct
+        basis, for the specific xyz structure the structural representation in
+        `input` is constructed for.
+    :param model_path: path to the trained rholearn/torch model to use for
+        prediction.
+    :param inv_means_path: if the invariant blocks have been standardized by
+        subtraction of the mean of their features, the mean needs to be added
+        back to the prediction. If so, `inv_means_path` should be the path to
+        the TensorMap containing these means. Otherwise, pass as None (default).
+    """
+    # Load model from file
+    model = io.load_torch_object(
+        model_path, device=torch.device("cpu"), torch_obj_str="model"
+    )
+
+    # Make a prediction using the model
     with torch.no_grad():
         out_pred = model(input)
 
     # Add back the feature means to the invariant (l=0) blocks if the model was trained
     # against electron densities with standardized invariants
     if inv_means_path is not None:
-        out_pred = features.standardize_invariants(out_pred, inv_means_path, reverse=True)
+        inv_means = equistore.load(inv_means_path)
+        out_pred = utils.standardize_invariants(
+            tensor=utils.tensor_to_numpy(out_pred),
+            invariant_means=inv_means,
+            reverse=True,
+        )
 
-    # Dropt the structure label from the TensorMap
+    # Drop the structure label from the TensorMap
     out_pred = utils.drop_metadata_name(out_pred, axis="samples", name="structure")
 
-    # Rename the TensorMap keys to match LCMD convention
-    out_pred = utils.rename_tensor(out_pred, keys_names=["spherical_harmonics_l", "element"])
+    # Convert TensorMap to Q-Stack coeffs. Need to rename the TensorMap keys
+    # here to fit LCMD naming convention
+    vect_coeffs = qstack.equio.tensormap_to_vector(
+        mol,
+        utils.rename_tensor(out_pred, keys_names=["spherical_harmonics_l", "element"]),
+    )
 
-    # Convert TensorMap to Q-Stack coeffs
-    vect_coeffs = qstack.equio.tensormap_to_vector(mol, out_pred)
-
-    return vect_coeffs
+    return out_pred, vect_coeffs
