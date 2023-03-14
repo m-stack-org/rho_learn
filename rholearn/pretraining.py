@@ -343,70 +343,6 @@ def construct_torch_objects(settings: dict):
                 run_dir=os.path.join(settings["io"]["run_dir"], subset_rel_dir),
             )
 
-            # # Load (to torch) input and ouput data from the data directory
-            # in_train = io.load_tensormap_to_torch(
-            #     os.path.join(
-            #         settings["io"]["data_dir"], subset_rel_dir, "in_train.npz"
-            #     ),
-            #     **settings["torch"],
-            # )
-            # out_train = io.load_tensormap_to_torch(
-            #     os.path.join(
-            #         settings["io"]["data_dir"], subset_rel_dir, "out_train.npz"
-            #     ),
-            #     **settings["torch"],
-            # )
-
-            # # Create a dir for this subset
-            # run_dir = os.path.join(settings["io"]["run_dir"], subset_rel_dir)
-            # io.check_or_create_dir(run_dir)
-            # print(run_dir)
-
-            # # Define some args for initializing the model
-            # keys = in_train.keys
-            # in_invariant_features = None
-            # if settings["model"]["type"] == "nonlinear":
-            #     # If using a nonlinear model, the size of the
-            #     # properties/features dimension of the nonlinear invariant
-            #     # multipliers needs to passed to EquiModelGlobal
-            #     invariants = {
-            #         specie: in_train.block(
-            #             spherical_harmonics_l=0, species_center=specie
-            #         )
-            #         for specie in np.unique(in_train.keys["species_center"])
-            #     }
-            #     in_invariant_features = {
-            #         key: len(invariants[key[1]].properties) for key in in_train.keys
-            #     }
-            # # Create model and save
-            # model = models.EquiModelGlobal(
-            #     model_type=settings["model"]["type"],
-            #     keys=keys,
-            #     in_feature_labels={key: in_train[key].properties for key in keys},
-            #     out_feature_labels={key: out_train[key].properties for key in keys},
-            #     in_invariant_features=in_invariant_features,
-            #     **settings["model"]["args"],
-            # )
-            # io.save_torch_object(
-            #     torch_obj=model,
-            #     path=os.path.join(run_dir, "model.pt"),
-            #     torch_obj_str="model",
-            # )
-
-            # # If using CoulombLoss: create train loss, save train and test loss
-            # if settings["loss"]["fn"] == "CoulombLoss":
-            #     loss_fn = _init_coulomb_loss_fn(settings, output_like=out_train)
-            #     io.save_torch_object(
-            #         torch_obj=loss_fn,
-            #         path=os.path.join(run_dir, "loss_fn.pt"),
-            #         torch_obj_str="loss_fn",
-            #     )
-            #     io.save_torch_object(
-            #         torch_obj=loss_fn_test,
-            #         path=os.path.join(run_dir, "loss_fn_test.pt"),
-            #         torch_obj_str="loss_fn",
-            #     )
-
 
 def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir: str):
     """
@@ -425,7 +361,6 @@ def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir:
 
     # Create a dir for this subset
     io.check_or_create_dir(run_dir)
-    print(run_dir)
 
     # Define some args for initializing the model
     keys = in_train.keys

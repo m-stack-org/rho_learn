@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Union
 
 import numpy as np
@@ -51,11 +52,16 @@ def train(
         epochs = range(1, n_epochs + 1)
         losses_train = []
         losses_test = []
+        with open(os.path.join(save_dir, "log.txt"), "a+") as f:
+            f.write("# epoch train_loss test_loss time_seconds")
     else:
         epochs = range(restart + 1, n_epochs + 1)
         losses = np.load(os.path.join(save_dir, "losses.npz"))
         losses_train = list(losses["train"][:restart])
         losses_test = list(losses["test"][:restart])
+
+    # Start timer
+    t0 = time.time()
 
     for epoch in epochs:
 
@@ -85,16 +91,14 @@ def train(
         )
 
         # Generate log msg and update progress log
-        n_msgs = 200
-        if n_epochs <= n_msgs or epoch % (n_epochs / n_msgs) == 0:
-            msg = (
-                f"epoch {epoch}"
-                f" train {np.round(losses_train[-1], 10)}"
-                f" test {np.round(losses_test[-1], 10)}"
+        dt = time.time() - t0
+        with open(os.path.join(save_dir, "log.txt"), "a+") as f:
+            f.write(
+                f"\n{epoch} "
+                f"{np.round(losses_train[-1], 10)} "
+                f"{np.round(losses_test[-1], 10)} "
+                f"{np.round(dt, 2)} "
             )
-            # print(msg)
-            with open(os.path.join(save_dir, "log.txt"), "a+") as f:
-                f.write("\n" + msg)
 
         # Write model to file and update log at the specified epoch intervals
         if epoch % save_interval == 0:
