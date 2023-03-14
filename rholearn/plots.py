@@ -27,8 +27,9 @@ def loss_vs_epoch(
     form:
 
     {
-        trace_0 <int>: losses_0 <np.ndarray>, trace_1 <int>: losses_1
-        <np.ndarray>, ...
+        trace_0 <int>: losses_0 <np.ndarray>, 
+        trace_1 <int>: losses_1 <np.ndarray>, 
+        ...
     }
 
     and multiple traces will be plotted on the same axis. Otherwise if
