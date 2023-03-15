@@ -115,13 +115,13 @@ def predict_density_from_mol(
         )
 
     # Drop the structure label from the TensorMap
-    out_pred = utils.drop_metadata_name(out_pred, axis="samples", name="structure")
+    tmp_out_pred = utils.drop_metadata_name(out_pred, axis="samples", name="structure")
 
     # Convert TensorMap to Q-Stack coeffs. Need to rename the TensorMap keys
     # here to fit LCMD naming convention
     vect_coeffs = qstack.equio.tensormap_to_vector(
         mol,
-        utils.rename_tensor(out_pred, keys_names=["spherical_harmonics_l", "element"]),
+        utils.rename_tensor(tmp_out_pred, keys_names=["spherical_harmonics_l", "element"]),
     )
 
     return out_pred, vect_coeffs
