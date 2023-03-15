@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mpltex
 
+import equistore
 from equistore import TensorMap
 
 from rholearn import utils
@@ -27,8 +28,8 @@ def loss_vs_epoch(
     form:
 
     {
-        trace_0 <int>: losses_0 <np.ndarray>, 
-        trace_1 <int>: losses_1 <np.ndarray>, 
+        trace_0 <int>: losses_0 <np.ndarray>,
+        trace_1 <int>: losses_1 <np.ndarray>,
         ...
     }
 
@@ -111,7 +112,7 @@ def parity_plot(
     ``color_by`` decides what to colour the data by.
     """
     # Check that the metadata is equivalent between the 2 TensorMaps
-    utils.equal_metadata(target, predicted)
+    equistore.equal_metadata(target, predicted)
     # Build the parity plot
     fig, ax = plt.subplots()
     linestyles = mpltex.linestyle_generator(
@@ -135,9 +136,13 @@ def parity_plot(
                 assert str(e).startswith(
                     "Couldn't find any block matching the selection"
                 )
-                continue
-            x = np.append(x, target_block.values.detach().numpy().flatten())
-            y = np.append(y, pred_block.values.detach().numpy().flatten())
+                print(f"key not found for {color_by} = {color_by_idx} and {other_keys}")
+            try:
+                x = np.append(x, target_block.values.detach().numpy().flatten())
+                y = np.append(y, pred_block.values.detach().numpy().flatten())
+            except AttributeError:
+                x = np.append(x, target_block.values.flatten())
+                y = np.append(y, pred_block.values.flatten())
         ax.loglog(x, y, label=f"{color_by} = {color_by_idx}", **next(linestyles))
     # Plot a y=x grey dashed line
     ax.axline((0, 0), (1, 1), color="grey", linestyle="dashed")
