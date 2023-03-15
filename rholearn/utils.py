@@ -359,22 +359,6 @@ def labels_intersection(a: Labels, b: Labels):
     return a[intersection_idxs]
 
 
-def get_feature_labels(tensor: Union[TensorMap, TensorBlock]) -> Union[dict, Labels]:
-    """
-    Returns the feature labels for the input ``tensor``. If passing a TensorMap,
-    this function returns a dict of Labels object, indexed by the block keys,
-    with values that correspond to the properties Labels of each block. If
-    passing just a TensorBlock, a Labels object corresponding to the input
-    ``tensor`` properties Labels is returned.
-    """
-    if isinstance(tensor, TensorMap):
-        return {key: block.properties for key, block in tensor}
-    elif isinstance(tensor, TensorBlock):
-        return tensor.properties
-    else:
-        raise TypeError("``tensor`` must be either a TensorMap or TensorBlock")
-
-
 # ===== TensorMap + TensorBlock functions
 
 
@@ -396,39 +380,6 @@ def num_elements_tensor(tensor: Union[TensorMap, TensorBlock, torch.Tensor]) -> 
         return torch.prod(tensor.size)
     else:
         raise TypeError("must pass either a TensorMap, TensorBlock, or torch.Tensor")
-
-
-def delta_tensor(input: TensorMap, target: TensorMap, absolute: bool = False):
-    """
-    Returns a :py:class:`TensorMap` whose block values are the difference
-    between the block values of the input and target tensors. The keys,
-    samples, components and properties Labels must be the same for both
-    tensors. For each :py:class:`TensorBlock` in the ``input`` tensor, the
-    values of the corresponding :py:class:`TensorBlock` in the ``target``
-    tensor is subtracted, i.e. input_block.values - target_block.values for
-    each block in the input/target TensorMaps.
-
-    If ``absolute`` is true, the absolute difference |input - target|.
-    """
-    # Check tensor metadata is equivalent
-    equivalent_metadata(input, target)
-
-    # Calculate the delta tensor
-    blocks = []
-    for key in target.keys:
-        values = input[key].values - target[key].values
-        if absolute:
-            values = abs(values)
-        blocks.append(
-            TensorBlock(
-                samples=target[key].samples,
-                components=target[key].components,
-                properties=target[key].properties,
-                values=values,
-            )
-        )
-    delta = TensorMap(keys=target.keys, blocks=blocks)
-    return delta
 
 
 def rename_tensor(
@@ -667,71 +618,6 @@ def pad_with_empty_blocks(
     return TensorMap(keys=target.keys, blocks=blocks)
 
 
-def equal_metadata(
-    tensor_1: TensorMap, tensor_2: TensorMap, check: Optional[List] = None
-) -> bool:
-    """
-    Checks if two :py:class:`TensorMap` objects have the same metadata,
-    returning a bool.
-
-    The equivalence of the keys of the two :py:class:`TensorMap` objects is always
-    checked. If `check` is none (the default), all metadata (i.e. the samples,
-    components, and properties of each block) is checked to contain the
-    same values in the same order.
-
-    Passing `check` as a list of strings will only check the metadata specified.
-    Allowed values to pass are "samples", "components", and "properties".
-
-    :param tensor_1: The first :py:class:`TensorMap`.
-    :param tensor_2: The second :py:class:`TensorMap` to compare to the first.
-    :param check: A list of strings specifying which metadata of each block to
-        check. If none, all metadata is checked. Allowed values are "samples",
-        "components", and "properties".
-
-    :return: True if the metadata of the two :py:class:`TensorMap` objects are
-        equal, False otherwise.
-    """
-    # Check input args
-    if not isinstance(tensor_1, TensorMap):
-        raise TypeError(f"`tensor_1` must be a TensorMap, not {type(tensor_1)}")
-    if not isinstance(tensor_2, TensorMap):
-        raise TypeError(f"`tensor_2` must be a TensorMap, not {type(tensor_2)}")
-    if not isinstance(check, (list, type(None))):
-        raise TypeError(f"`check` must be a list, not {type(check)}")
-    if check is None:
-        check = ["samples", "components", "properties"]
-    for metadata in check:
-        if not isinstance(metadata, str):
-            raise TypeError(
-                f"`check` must be a list of strings, got list of {type(metadata)}"
-            )
-        if metadata not in ["keys", "samples", "components", "properties"]:
-            raise ValueError(f"Invalid metadata to check: {metadata}")
-    # Check equivalence in keys
-    try:
-        _utils._check_maps(tensor_1, tensor_2, "equal_metadata")
-    except ValueError:
-        return False
-
-    # Loop over the blocks
-    for key in tensor_1.keys:
-        block_1 = tensor_1[key]
-        block_2 = tensor_2[key]
-
-        # Check metatdata of the blocks
-        try:
-            _utils._check_blocks(block_1, block_2, check, "equal_metadata")
-        except ValueError:
-            return False
-
-        # Check metadata of the gradients
-        try:
-            _utils._check_same_gradients(block_1, block_2, check, "equal_metadata")
-        except ValueError:
-            return False
-    return True
-
-
 # ===== other utility functions
 
 
@@ -784,21 +670,28 @@ def standardize_invariants(
     """
     Standardizes the invariant (l=0) blocks on the input `tensor` by subtracting
     from each coefficient the mean of the coefficients belonging to that
-    feature.
+    feature. Returns a new TensorMap.
 
     Must pass the TensorMap containing the means of the features,
     `invariant_means`. If `reverse` is true, the mean is instead added back to
     the coefficients of each feature. Assumes `tensor` and `invariant_means` are
     numpy-based TensorMaps.
     """
+    new_keys = tensor.keys
+    new_blocks = []
     # Iterate over the invariant keys
-    for inv_key in invariant_means.keys:
-        block = tensor[inv_key]
-        # Iterate over each feature/property
-        for p in range(len(block.properties)):
-            if reverse:  # add the mean to the values
-                block.values[..., p] += invariant_means[inv_key].values[..., p]
-            else:  # subtract
-                block.values[..., p] -= invariant_means[inv_key].values[..., p]
+    for key in new_keys:
+        if key in invariant_means.keys:  # standardize
+            # Copy the block
+            new_block = tensor[key].copy()
+            # Manipulate values of copied block in place
+            for p in range(len(new_block.properties)):
+                if reverse:  # add the mean to the values
+                    new_block.values[..., p] += invariant_means[key].values[..., p]
+                else:  # subtract
+                    new_block.values[..., p] -= invariant_means[key].values[..., p]
+            new_blocks.append(new_block)
+        else:  # Don't standardize
+            new_blocks.append(tensor[key].copy())
 
-    return tensor
+    return TensorMap(new_keys, new_blocks)
