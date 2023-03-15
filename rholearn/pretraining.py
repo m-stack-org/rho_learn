@@ -169,7 +169,7 @@ def partition_data(settings: dict):
 
         # Check that the samples and components indices are exactly equal
         for (a, b) in [(in_train, out_train), (in_test, out_test)]:
-            assert utils.equal_metadata(a, b, check=["samples", "components"])
+            assert equistore.equal_metadata(a, b, check=["samples", "components"])
 
         # Define the filenames to save the structure indices of the partitioned data
         assert len(grouped_indices) == 2
@@ -188,7 +188,7 @@ def partition_data(settings: dict):
 
         # Check that the samples and components indices are exactly equal
         for (a, b) in [(in_train, out_train), (in_test, out_test), (in_val, out_val)]:
-            assert utils.equal_metadata(a, b, check=["samples", "components"])
+            assert equistore.equal_metadata(a, b, check=["samples", "components"])
 
         # Define the filenames to save the structure indices of the partitioned data
         assert len(grouped_indices) == 3

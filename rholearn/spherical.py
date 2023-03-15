@@ -172,7 +172,7 @@ def check_equivariance(
     equivariant = True
 
     # Check that the metadata is equivalent
-    utils.equal_metadata(unrotated, rotated)
+    equistore.equal_metadata(unrotated, rotated)
 
     # Build Wigner D-Matrices
     wigner_d_matrices = WignerDReal(lmax, alpha, beta, gamma)
