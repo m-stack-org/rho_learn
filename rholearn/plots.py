@@ -107,7 +107,7 @@ def parity_plot(
     color_by: str = "spherical_harmonics_l",
 ):
     """
-    Returns a loglog parity plot of the target (x axis) and predicted (y axis)
+    Returns a parity plot of the target (x axis) and predicted (y axis)
     values. Plots also a grey dashed y=x line. The keys of the input TensorMap
     ``color_by`` decides what to colour the data by.
     """
@@ -143,9 +143,9 @@ def parity_plot(
             except AttributeError:
                 x = np.append(x, target_block.values.flatten())
                 y = np.append(y, pred_block.values.flatten())
-        ax.loglog(x, y, label=f"{color_by} = {color_by_idx}", **next(linestyles))
+        ax.plot(x, y, label=f"{color_by} = {color_by_idx}", **next(linestyles))
     # Plot a y=x grey dashed line
-    ax.axline((0, 0), (1, 1), color="grey", linestyle="dashed")
+    ax.axline((-1e-5, -1e-5), (1e-5, 1e-5), color="grey", linestyle="dashed")
     fig.tight_layout()
 
     return fig, ax
