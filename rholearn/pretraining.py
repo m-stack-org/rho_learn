@@ -1,56 +1,3 @@
-"""
-Example settings dict:
-```
-settings = {
-    "io": {
-        "data_dir": "/path/to/data/directory",
-        "run_dir": "/path/to/simulation/run/directory",
-        "coulomb": "/path/to/coulomb_matrices.npz",
-    },
-    "numpy": {
-        "random_seed": 10,
-    },
-    "train_test_split": {
-        "axis": "samples",
-        "names": ["structure"],
-        "n_groups": 2,
-        "group_sizes_rel": [0.8, 0.2],
-    },
-    "data_partitions": {
-        "n_exercises": 1,
-        "n_subsets": 1,
-    },
-    "torch": {
-        "requires_grad": True,
-        "dtype": torch.float64,
-        "device": torch.device("cpu"),
-    },
-    "model": {
-        # "type": "linear",
-        "type": "nonlinear_invariants",
-        "args": {
-            "layer_width": 20,
-        },
-    },
-    "optimizer": {
-        "algorithm": torch.optim.LBFGS,
-        "args": {
-            "lr": 0.2,
-        },
-    },
-    "loss": {
-        "fn": "CoulombLoss",
-        "args": {
-            # "reduction": "sum",
-        },
-    },
-    "training": {
-        "n_epochs": 15,
-        "save_interval": 3,
-    },
-}
-```
-"""
 import os
 import pprint
 from typing import List, Union, Optional
@@ -66,7 +13,7 @@ from equisolve.utils import split_data
 from rholearn import io, loss, models, pretraining, utils
 
 
-def partition_data(settings: dict):
+def partition_data(input_path: str, output_path: str, data_settings: dict):
     """
     Takes as input a dict of ``settings`` and prepares input to model training by
     performing a train-test split and partitioning of the training data into
@@ -127,27 +74,28 @@ def partition_data(settings: dict):
     ```
     """
     # Check/create data directory
-    io.check_or_create_dir(settings["io"]["data_dir"])
+    io.check_or_create_dir(data_settings["data_dir"])
 
     # Load the input and output data from the paths specified in settings
     print(f"Loading input and output TensorMaps")
-    input = equistore.load(settings["io"]["input"])
-    output = equistore.load(settings["io"]["output"])
+    input = equistore.load(input_path)
+    output = equistore.load(output_path)
 
     # Save settings to pickle and txt files
     print(
-        f"Saving data partitioning settings to .txt and .pickle in {settings['io']['data_dir']}"
+        f"Saving data partitioning settings to .txt and .pickle in {data_settings['data_dir']}"
     )
     io.pickle_dict(
-        path=os.path.join(settings["io"]["data_dir"], "settings.pickle"), dict=settings
+        path=os.path.join(data_settings["data_dir"], "settings.pickle"),
+        dict=data_settings,
     )
-    with open(os.path.join(settings["io"]["data_dir"], "settings.txt"), "w+") as f:
-        f.write(f"Settings:\n\n{pprint.pformat(settings)}")
+    with open(os.path.join(data_settings["data_dir"], "settings.txt"), "w+") as f:
+        f.write(f"Settings:\n\n{pprint.pformat(data_settings)}")
 
     # Perform a train-test(-validation) split
-    if settings["train_test_split"]["n_groups"] == 2:
+    if data_settings["n_groups"] == 2:
         print("Performing train-test split")
-    elif settings["train_test_split"]["n_groups"] == 3:
+    elif data_settings["n_groups"] == 3:
         print("Performing train-test-validation split")
     else:
         raise ValueError(
@@ -156,14 +104,14 @@ def partition_data(settings: dict):
         )
     tensors, grouped_indices = split_data(
         tensors=[input, output],
-        axis="samples",
-        names=settings["train_test_split"]["names"],
-        n_groups=settings["train_test_split"]["n_groups"],
-        group_sizes=settings["train_test_split"].get("group_sizes"),
-        seed=settings["numpy"]["random_seed"],
+        axis=data_settings["axis"],
+        names=data_settings["names"],
+        n_groups=data_settings["n_groups"],
+        group_sizes=data_settings.get("group_sizes"),
+        seed=data_settings["seed"],
     )
 
-    if settings["train_test_split"]["n_groups"] == 2:
+    if data_settings["n_groups"] == 2:
         # Unpack the tensors for the train-test split
         [[in_train, in_test], [out_train, out_test]] = tensors
 
@@ -207,13 +155,13 @@ def partition_data(settings: dict):
     # Save the structure indices to file
     for i, name in idx_files.items():
         np.save(
-            os.path.join(settings["io"]["data_dir"], f"structure_idxs_{name}.npy"),
+            os.path.join(data_settings["data_dir"], f"structure_idxs_{name}.npy"),
             grouped_indices[i],
         )
 
     # Save the TensorMaps to file
     for name, tm in tm_files.items():
-        equistore.save(os.path.join(settings["io"]["data_dir"], name), tm)
+        equistore.save(os.path.join(data_settings["data_dir"], name), tm)
 
     # Define the train structure indices
     train_structure_idxs = grouped_indices[0]
@@ -221,22 +169,22 @@ def partition_data(settings: dict):
     # Get train subset sizes (evenly spaced on log base e scale) and write to file
     subset_sizes = utils.get_log_subset_sizes(
         n_max=len(train_structure_idxs),
-        n_subsets=settings["data_partitions"]["n_subsets"],
+        n_subsets=data_settings["n_subsets"],
         base=np.e,
     )
     np.save(
-        os.path.join(settings["io"]["data_dir"], "subset_sizes_train.npy"),
+        os.path.join(data_settings["data_dir"], "subset_sizes_train.npy"),
         subset_sizes,
     )
 
     # Create training subsets. Increment the random seed for each exercise so
     # that the samples in the training subsets are different.
-    for exercise_i in range(settings["data_partitions"]["n_exercises"]):
+    for exercise_i in range(data_settings["n_exercises"]):
         # Randomly shuffle the unique indices
-        if settings["numpy"]["random_seed"] is not None:
-            if settings["numpy"]["random_seed"] != -1:
+        if data_settings["seed"] is not None:
+            if data_settings["seed"] != -1:
                 # Set a numpy random seed, different for each exercise
-                np.random.seed(settings["numpy"]["random_seed"] + exercise_i)
+                np.random.seed(data_settings["seed"] + exercise_i)
             np.random.shuffle(train_structure_idxs)
         # Create the directories and training data for each subset
         print(f"Creating training subsets for learning exercise {exercise_i}")
@@ -245,7 +193,7 @@ def partition_data(settings: dict):
             out_train=out_train,
             subset_sizes=subset_sizes,
             train_structure_idxs=train_structure_idxs,
-            save_dir=os.path.join(settings["io"]["data_dir"], f"exercise_{exercise_i}"),
+            save_dir=os.path.join(data_settings["data_dir"], f"exercise_{exercise_i}"),
         )
 
 
@@ -286,15 +234,13 @@ def create_learning_subsets(
             samples=train_structure_idxs[:n_train],
         )
         # Save in_train, out_train to file
-        equistore.save(
-            os.path.join(subset_save_dir, "in_train.npz"), in_train_subset
-        )
-        equistore.save(
-            os.path.join(subset_save_dir, "out_train.npz"), out_train_subset
-        )
+        equistore.save(os.path.join(subset_save_dir, "in_train.npz"), in_train_subset)
+        equistore.save(os.path.join(subset_save_dir, "out_train.npz"), out_train_subset)
 
 
-def construct_torch_objects(settings: dict):
+def construct_torch_objects(
+    data_settings: dict, ml_settings: dict, coulomb_path: str = None, **kwargs
+):
     """
     For each of the training subsets constructs model and loss torch objects.
     Saves them to file in a directory structure mirroring those found in
@@ -302,61 +248,65 @@ def construct_torch_objects(settings: dict):
     with the subdirectory structure <run_dir>/exercise_i/subset_j.
     """
     # Create run dir if not exists
-    io.check_or_create_dir(settings["io"]["run_dir"])
-
-    # Save settings to pickle and txt files
-    print(
-        f"Saving training settings to .txt and .pickle in {settings['io']['run_dir']}"
-    )
-    io.pickle_dict(
-        path=os.path.join(settings["io"]["run_dir"], "settings.pickle"), dict=settings
-    )
-    with open(os.path.join(settings["io"]["run_dir"], "settings.txt"), "w+") as f:
-        f.write(f"Settings:\n\n{pprint.pformat(settings)}")
+    io.check_or_create_dir(ml_settings["run_dir"])
 
     # IMPORTANT: set the torch default dtype
-    torch.set_default_dtype(settings["torch"]["dtype"])
+    torch.set_default_dtype(ml_settings["torch"]["dtype"])
 
     # Create test loss fn if using CoulombLoss
-    if settings["loss"]["fn"] == "CoulombLoss":
+    if ml_settings["loss"]["fn"] == "CoulombLoss":
+        if coulomb_path is None:
+            raise ValueError(
+                "If using CoulombLoss, a path to the Coulomb metrics must be specified."
+            )
         out_test = equistore.load(
-            os.path.join(settings["io"]["data_dir"], "out_test.npz")
+            os.path.join(data_settings["data_dir"], "out_test.npz")
         )
-        loss_fn_test = _init_coulomb_loss_fn(settings, output_like=out_test)
+        loss_fn_test = _init_coulomb_loss_fn(
+            coulomb_path, output_like=out_test, **ml_settings["torch"]
+        )
 
     # Construct model and loss (if using CoulombLoss) objects for every train
     # subdir
     print("Building and saving torch objects in directory:")
-    for exercise_i in range(settings["data_partitions"]["n_exercises"]):
+    for exercise_i in range(n_exercises):
         # Create a dir for this exercise
-        io.check_or_create_dir(
-            os.path.join(settings["io"]["run_dir"], f"exercise_{exercise_i}")
-        )
-        for subset_j in range(settings["data_partitions"]["n_subsets"]):
+        io.check_or_create_dir(os.path.join(run_dir, f"exercise_{exercise_i}"))
+        for subset_j in range(n_subsets):
             subset_rel_dir = os.path.join(
                 f"exercise_{exercise_i}", f"subset_{subset_j}"
             )
 
             construct_torch_objects_in_train_dir(
-                settings,
-                data_dir=os.path.join(settings["io"]["data_dir"], subset_rel_dir),
-                run_dir=os.path.join(settings["io"]["run_dir"], subset_rel_dir),
+                data_dir=os.path.join(data_settings["data_dir"], subset_rel_dir),
+                run_dir=os.path.join(ml_settings["run_dir"], subset_rel_dir),
+                ml_settings=ml_settings,
             )
 
 
-def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir: str):
+def construct_torch_objects_in_train_dir(
+    data_dir: str, run_dir: str, ml_settings: dict
+):
     """
     Loads training data from the data directory `data_dir` and constructs
     relevant torch objects, saving them to the run directory `run_dir`.
+
+    kwargs:
+    data_dir: str
+    run_dir: str
+    torch_settings: dict
+    model: dict
+    loss: dict
+
     """
     # Load (to torch) input and ouput data from the data directory
     in_train = io.load_tensormap_to_torch(
         os.path.join(data_dir, "in_train.npz"),
-        **settings["torch"],
+        **ml_settings["torch"],
     )
     out_train = io.load_tensormap_to_torch(
         os.path.join(data_dir, "out_train.npz"),
-        **settings["torch"],
+        **ml_settings["torch"],
     )
 
     # Create a dir for this subset
@@ -365,7 +315,7 @@ def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir:
     # Define some args for initializing the model
     keys = in_train.keys
     in_invariant_features = None
-    if settings["model"]["type"] == "nonlinear":
+    if ml_settings["model"]["type"] == "nonlinear":
         # If using a nonlinear model, the size of the
         # properties/features dimension of the nonlinear invariant
         # multipliers needs to passed to EquiModelGlobal
@@ -378,12 +328,12 @@ def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir:
         }
     # Create model and save
     model = models.EquiModelGlobal(
-        model_type=settings["model"]["type"],
+        model_type=ml_settings["model"]["type"],
         keys=keys,
         in_feature_labels={key: in_train[key].properties for key in keys},
         out_feature_labels={key: out_train[key].properties for key in keys},
         in_invariant_features=in_invariant_features,
-        **settings["model"]["args"],
+        **ml_settings["model"]["args"],
     )
     io.save_torch_object(
         torch_obj=model,
@@ -392,8 +342,11 @@ def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir:
     )
 
     # If using CoulombLoss: create train loss, save train and test loss
-    if settings["loss"]["fn"] == "CoulombLoss":
-        loss_fn = _init_coulomb_loss_fn(settings, output_like=out_train)
+    if ml_settings["loss"]["fn"] == "CoulombLoss":
+        loss_fn = _init_coulomb_loss_fn(
+            coulomb_path, output_like=out_train, **ml_settings["torch"]
+        )
+
         io.save_torch_object(
             torch_obj=loss_fn,
             path=os.path.join(run_dir, "loss_fn.pt"),
@@ -407,8 +360,9 @@ def construct_torch_objects_in_train_dir(settings: dict, data_dir: str, run_dir:
 
 
 def load_training_objects(
-    settings: dict,
     train_rel_dir: str,
+    data_dir: str,
+    ml_settings: dict,
     restart: Optional[int] = None,
 ) -> list:
     """
@@ -439,37 +393,33 @@ def load_training_objects(
     :return optimizer: the torch optimizer
     """
     # IMPORTANT: set the torch default dtype
-    torch.set_default_dtype(settings["torch"]["dtype"])
+    torch.set_default_dtype(ml_settings["torch"]["dtype"])
 
     # Define the data and run training directories
-    train_data_dir = os.path.join(settings["io"]["data_dir"], train_rel_dir)
-    train_run_dir = os.path.join(settings["io"]["run_dir"], train_rel_dir)
+    train_data_dir = os.path.join(data_dir, train_rel_dir)
+    train_run_dir = os.path.join(ml_settings["run_dir"], train_rel_dir)
 
     # Load input and output train and test data
     in_train = equistore.load(os.path.join(train_data_dir, "in_train.npz"))
     out_train = equistore.load(os.path.join(train_data_dir, "out_train.npz"))
-    in_test = equistore.load(os.path.join(settings["io"]["data_dir"], "in_test.npz"))
-    out_test = equistore.load(
-        os.path.join(settings["io"]["data_dir"], "out_test.npz")
-    )
+    in_test = equistore.load(os.path.join(data_dir, "in_test.npz"))
+    out_test = equistore.load(os.path.join(data_dir, "out_test.npz"))
 
     # Standardize the invariant blocks of out_train and out_test
-    if settings["training"]["standardize_invariant_features"]:
+    if ml_settings["training"]["standardize_invariant_features"]:
         # Calculate the means of the invariant features
         train_inv_means = utils.get_invariant_means(out_train)
         # Standardize the train and test data with the train means
         out_train = utils.standardize_invariants(out_train, train_inv_means)
         out_test = utils.standardize_invariants(out_test, train_inv_means)
         # Save the invariant means to file
-        equistore.save(
-            os.path.join(train_data_dir, "inv_means.npz"), train_inv_means
-        )
+        equistore.save(os.path.join(train_data_dir, "inv_means.npz"), train_inv_means)
 
     # Convert the tensors to torch
-    in_train = utils.tensor_to_torch(in_train, **settings["torch"])
-    in_test = utils.tensor_to_torch(in_test, **settings["torch"])
-    out_train = utils.tensor_to_torch(out_train, **settings["torch"])
-    out_test = utils.tensor_to_torch(out_test, **settings["torch"])
+    in_train = utils.tensor_to_torch(in_train, **ml_settings["torch"])
+    in_test = utils.tensor_to_torch(in_test, **ml_settings["torch"])
+    out_train = utils.tensor_to_torch(out_train, **ml_settings["torch"])
+    out_test = utils.tensor_to_torch(out_test, **ml_settings["torch"])
 
     # Load model
     model_path = (
@@ -480,7 +430,9 @@ def load_training_objects(
 
     if os.path.exists(model_path):
         model = io.load_torch_object(
-            path=model_path, device=settings["torch"]["device"], torch_obj_str="model"
+            path=model_path,
+            device=ml_settings["torch"]["device"],
+            torch_obj_str="model",
         )
     else:
         raise FileNotFoundError(
@@ -492,14 +444,14 @@ def load_training_objects(
     if os.path.exists(loss_fn_path):
         loss_fn = io.load_torch_object(
             path=loss_fn_path,
-            device=settings["torch"]["device"],
+            device=ml_settings["torch"]["device"],
             torch_obj_str="loss_fn",
         )
         loss_fn_test_path = os.path.join(train_run_dir, "loss_fn_test.pt")
         if os.path.exists(loss_fn_path):
             loss_fn_test = io.load_torch_object(
                 path=loss_fn_test_path,
-                device=settings["torch"]["device"],
+                device=ml_settings["torch"]["device"],
                 torch_obj_str="loss_fn",
             )
             # If the test loss function exists, compile the train and test losses
@@ -507,21 +459,21 @@ def load_training_objects(
             loss_fn = {"train": loss_fn, "test": loss_fn_test}
     # Otherwise, initialize
     else:
-        if settings["loss"]["fn"] == "CoulombLoss":
+        if ml_settings["loss"]["fn"] == "CoulombLoss":
             # Build train loss fn
             loss_fn_train = _init_coulomb_loss_fn(
-                settings=settings, output_like=out_train
+                coulomb_path, output_like=out_train, **ml_settings["torch"]
             )
             # Build test loss fn
             out_test = equistore.load(
-                os.path.join(settings["io"]["data_dir"], "out_test.pt")
+                os.path.join(data_dir, "out_test.pt")
             )
             loss_fn_test = _init_coulomb_loss_fn(
-                settings=settings, output_like=out_test
+                coulomb_path, output_like=out_test, **ml_settings["torch"]
             )
             loss_fn = {"train": loss_fn_train, "test": loss_fn_test}
-        elif settings["loss"]["fn"] == "MSELoss":
-            loss_fn = loss.MSELoss(reduction=settings["loss"]["args"]["reduction"])
+        elif ml_settings["loss"]["fn"] == "MSELoss":
+            loss_fn = loss.MSELoss(reduction=ml_settings["loss"]["args"]["reduction"])
         else:
             raise NotImplementedError(
                 "only CoulombLoss and MSELoss functions currently implemented."
@@ -538,39 +490,41 @@ def load_training_objects(
         optimizer = torch.optim.LBFGS(model.parameters())
         optimizer.load_state_dict(opt_state_dict)
     else:
-        optimizer = settings["optimizer"]["algorithm"](
+        optimizer = ml_settings["optimizer"]["algorithm"](
             params=model.parameters(),
-            lr=settings["optimizer"]["args"]["lr"],
+            lr=ml_settings["optimizer"]["args"]["lr"],
         )
 
     return [in_train, in_test, out_train, out_test], model, loss_fn, optimizer
 
 
 def _init_coulomb_loss_fn(
-    settings: dict,
+    coulomb_path: str,
     output_like: TensorMap,
+    requires_grad: bool,
+    dtype: torch.dtype,
+    device: torch.device,
 ):
     """
-    According to the user settings, initializes the CoulombLoss class and
-    returns it.
+    Initializes the CoulombLoss object and returns it.
+
+    :param coulomb_path: str, path at which the coulomb matrices are stored
+    :param output_like: TensorMap, a TensorMap object containing the
+    :param torch: dict containing torch settings; "requires_grad", "dtype", and
+        "device".
     """
     # IMPORTANT: set the torch default dtype
-    torch.set_default_dtype(settings["torch"]["dtype"])
+    torch.set_default_dtype(dtype)
 
-    # Coulomb matrices file path needs to be specified if using CoulombLoss
-    if settings["io"].get("coulomb") is None:
-        raise ValueError(
-            "must specify filepath for the coulomb matrices in ``settings`` if using CoulombLoss"
-        )
     # Check coulomb matrices file path exists
-    if not os.path.exists(settings["io"]["coulomb"]):
-        raise FileNotFoundError(
-            f"coulomb matrices at path {settings['io']['coulomb']} do not exist"
-        )
+    if not os.path.exists(coulomb_path):
+        raise FileNotFoundError(f"coulomb matrices at path {coulomb_path} not found")
     # Load coulomb matrices
     coulomb_matrices = io.load_tensormap_to_torch(
-        os.path.join(settings["io"]["coulomb"]),
-        **settings["torch"],
+        os.path.join(coulomb_path),
+        requires_grad=requires_grad,
+        dtype=dtype,
+        device=device,
     )
     # Build Coulomb loss function
     loss_fn = loss.CoulombLoss(
