@@ -188,22 +188,34 @@ The functionality of this package is demonstrated in the example notebooks in
 the ``rho_learn/docs/example/azoswitch`` directory. This section will briefly the
 various parts of the workflow.
 
-## Data
+## Water
 
-In order to keep the proof-of-concept workflow lightweight, the example dataset
-is a 10-molecule subset of a 128-molecule database of molecular azoswitches.
-This itself is a subset of a larger database used in the electron density
-learning paper entitled __"Learning the Exciton Properties of Azo-dyes"__
-DOI: [10.1021/acs.jpclett.1c01425](https://doi.org/10.1021/acs.jpclett.1c01425).
+A demonstrative notebook is provided, implementing the key parts of the
+model-training workflow. This begins with the generation of a $\lambda£-SOAP
+structural representation for a 1000-water monomer database. The relationship to
+the electron density is then learned using a linear model, optimizing weights
+based on gradient descent of an $L^2$ loss function. The aim of this notebook is
+to be a concise introduction to the key components of torch-based learning of
+the electron density.
 
+The open-source packge ["Symmetry-Adapted Learning of Three-dimensional
+Electron Densities" (SALTED)][https://github.com/andreagrisafi/SALTED] is the
+source for this dataset and was used to generate reference electron densities,
+with outputs converted to `equistore` format.
 
-The 128-molecule database, including xyz files, ground- and 1st- and 2nd-
-excited particle and hole electron densities, and coulomb matrices can be found
-on [switchdrive](https://drive.switch.ch/index.php/s/qbOa1JKnsv0ebVv), but the
-even smaller 10-molecule xyz files, ground state electron density, and coulomb
-matrices can be found in the ``rholearn``
-[``example/azoswitch/data/``](https://github.com/jwa7/rho_learn/tree/main/docs/example/azoswitch/data)
-directory.
+## Azoswitch
+
+Also included in the examples are a set of more pedagogical notebooks on a more
+complicated dataset. In order to be lightweight enough to run on a laptop, and
+with the emphasis being on the workflow as opposed to accurate results, a
+10-molecule database of azoswitch dyes are provided.
+
+This dataset is a 10-molecule subset of a database of molecular azoswitches used
+in the electron density learning paper entitled __"Learning the Exciton
+Properties of Azo-dyes"__ DOI:
+[10.1021/acs.jpclett.1c01425](https://doi.org/10.1021/acs.jpclett.1c01425).
+
+There are 3 example notebooks for the azoswitch workflow.
 
 The first notebook
 [1_data.ipynb](https://github.com/jwa7/rho_learn/blob/main/docs/example/azoswitch/1_data.ipynb)
@@ -212,21 +224,16 @@ representation, perform a train-test-validation split and partition data into
 training subsets of various sizes such that a learning exercise can be
 performed.
 
-## Model Training
-
-The second notebook
+The second
 [2_models.ipynb](https://github.com/jwa7/rho_learn/blob/main/docs/example/azoswitch/2_models.ipynb)
-details how to build both linear and nonlinear global torch models, check for
-equivariance, and perform model trianing.
+goes through the construction of both a linear and nonlinear model, custom loss
+functions (based on the Coulomb metric), and how to use these in model training.
 
-## Analysis
-
-The third notebook
+The third and final notebook
 [3_analysis.ipynb](https://github.com/jwa7/rho_learn/blob/main/docs/example/azoswitch/3_analysis.ipynb)
-shows how some standard analysis figures, such as loss vs epoch, learning curves,
-and parity plots can be plotted, as well as how to visualize the electron density.
-
-
+outlines plotting figures analysing model training, as well as making a
+prediction on a validation structure, visualizing this prediction and the
+associated error.
 
 # References
 
