@@ -1,25 +1,12 @@
 **__pycache__/
+**.DS_Store
 build/
 rholearn.egg-info
 
-runs/
-simulations/
-experiments/
-
 # Azoswitch example
-docs/example/azoswitch/data/partitions
-docs/example/azoswitch/data/coulomb_matrices.npz
-docs/example/azoswitch/data/lambda_soap.npz
-docs/example/azoswitch/data/lambda_soap_cleaned.npz
-docs/example/azoswitch/data/rascal_hypers.pickle
+docs/example/azoswitch/data/
+docs/example/azoswitch/runs/
 
 # Water example
-docs/example/water/data/partitions
-docs/example/water/data/lambda_soap.npz
-docs/example/water/data/one_water_monomer.xyz
-docs/example/water/data/in*.npz
-docs/example/water/data/out*.npz
-
-.DS_Store
-
-run*.sh
+docs/example/water/data/
+docs/example/water/runs/
