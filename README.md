@@ -199,7 +199,7 @@ to be a concise introduction to the key components of torch-based learning of
 the electron density.
 
 The open-source packge ["Symmetry-Adapted Learning of Three-dimensional
-Electron Densities" (SALTED)][https://github.com/andreagrisafi/SALTED] is the
+Electron Densities" (SALTED)](https://github.com/andreagrisafi/SALTED) is the
 source for this dataset and was used to generate reference electron densities,
 with outputs converted to `equistore` format.
 
