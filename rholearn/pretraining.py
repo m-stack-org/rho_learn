@@ -170,7 +170,7 @@ def partition_data(input_path: str, output_path: str, data_settings: dict):
     subset_sizes = utils.get_log_subset_sizes(
         n_max=len(train_structure_idxs),
         n_subsets=data_settings["n_subsets"],
-        base=np.e,
+        base=10,
     )
     np.save(
         os.path.join(data_settings["data_dir"], "subset_sizes_train.npy"),
@@ -269,10 +269,10 @@ def construct_torch_objects(
     # Construct model and loss (if using CoulombLoss) objects for every train
     # subdir
     print("Building and saving torch objects in directory:")
-    for exercise_i in range(n_exercises):
+    for exercise_i in range(data_settings["n_exercises"]):
         # Create a dir for this exercise
-        io.check_or_create_dir(os.path.join(run_dir, f"exercise_{exercise_i}"))
-        for subset_j in range(n_subsets):
+        io.check_or_create_dir(os.path.join(ml_settings["run_dir"], f"exercise_{exercise_i}"))
+        for subset_j in range(data_settings["n_subsets"]):
             subset_rel_dir = os.path.join(
                 f"exercise_{exercise_i}", f"subset_{subset_j}"
             )

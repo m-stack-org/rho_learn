@@ -528,7 +528,7 @@ def drop_metadata_name(tensor: TensorMap, axis: str, name: str) -> TensorMap:
             uniq = np.unique(block.samples[name])
         else:
             uniq = np.unique(block.properties[name])
-        if not len(uniq) == 1:
+        if len(uniq) > 1:
             raise ValueError(
                 f"name {name} is not unique in the {axis}."
                 " Can only drop a `name` where the value is the"

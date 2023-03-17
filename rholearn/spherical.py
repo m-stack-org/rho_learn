@@ -14,6 +14,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 import wigners
 
+import equistore
 from equistore import Labels, TensorBlock, TensorMap
 from rholearn import utils
 

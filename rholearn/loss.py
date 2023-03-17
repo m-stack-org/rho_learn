@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import torch
 
+import equistore
 from equistore import Labels, TensorBlock, TensorMap
 from rholearn import utils
 
@@ -351,7 +352,7 @@ class CoulombLoss(torch.nn.Module):
             )
 
         # Get delta electron density TensorMap
-        delta_rho = utils.delta_tensor(input=input, target=target)
+        delta_rho = equistore.subtract(input, target)
 
         # Calculate loss
         loss = 0
