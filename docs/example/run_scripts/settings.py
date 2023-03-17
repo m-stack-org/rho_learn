@@ -16,6 +16,7 @@ RASCAL_HYPERS = {
 }
 
 DATA_SETTINGS = {
+    # Where to read the xyz data from
     "xyz": os.path.join(RHOLEARN_DIR, "docs/example/water/data/water_monomers_1k.xyz"),
     # Set path where the data should be stored
     "data_dir": os.path.join(RHOLEARN_DIR, "docs/example/water/data"),
