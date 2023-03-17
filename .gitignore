@@ -1,19 +1,12 @@
 **__pycache__/
+**.DS_Store
 build/
 rholearn.egg-info
 
-data/
-results/
-simulations/
-experiments/
+# Azoswitch example
+docs/example/azoswitch/data/
+docs/example/azoswitch/runs/
 
-# Ignore the folders/files produced in the running of the example azoswitch
-# notebooks
-docs/example/azoswitch/partitions
-docs/example/azoswitch/lambda_soap.npz
-docs/example/azoswitch/lambda_soap_cleaned.npz
-docs/example/azoswitch/rascal_hypers.pickle
-
-.DS_Store
-
-run*.sh
+# Water example
+docs/example/water/data/
+docs/example/water/runs/

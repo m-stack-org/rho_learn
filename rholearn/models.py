@@ -229,10 +229,11 @@ class EquiModelGlobal(torch.nn.Module):
         """
         if not isinstance(input, TensorMap):
             raise TypeError("``input`` must be an equistore TensorMap")
-        if not utils.labels_equal(self.keys, input.keys):
+        if not np.all([input_key in self.keys for input_key in input.keys]):
             raise ValueError(
                 "the keys of the ``input`` TensorMap given to forward() must match"
-                + " the keys used to initialize the EquiModelGlobal object"
+                " the keys used to initialize the EquiModelGlobal object. Model keys:"
+                f"{self.keys}, input keys: {input.keys}"
             )
 
         if self.model_type == "linear":

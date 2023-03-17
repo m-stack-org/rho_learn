@@ -4,8 +4,17 @@ from typing import List, Union, Optional
 import numpy as np
 import torch
 
+import equistore
 from equistore import Labels, TensorBlock, TensorMap
+from equistore.operations import _utils
 
+# TODO:
+# - Remove functions once in equistore:
+#       - searchable_labels
+#       - drop_blocks
+#       - labels_equal
+#       - equal_metadata
+#       - tensor_to_torch/numpy, block_to_torch/numpy
 
 # ===== tensors to torch fxns
 
@@ -109,6 +118,8 @@ def block_to_torch(
     :return: a :py:class:`TensorBlock` whose values tensor is now of type
         :py:class:`torch.tensor`.
     """
+    if isinstance(block.values, torch.Tensor):
+        return block.copy()
 
     # Create new block, with the values tensor converted to a torch tensor.
     new_block = TensorBlock(
@@ -192,6 +203,9 @@ def block_to_numpy(block: TensorBlock) -> TensorBlock:
     converts them to numpy arrays of dtype np.float64. Returns a new TensorBlock
     object.
     """
+    if isinstance(block.values, np.ndarray):
+        return block.copy()
+
     # Create new block, with the values tensor converted to a torch tensor.
     new_block = TensorBlock(
         values=np.array(block.values.detach().numpy(), dtype=np.float64),
@@ -217,7 +231,7 @@ def make_contiguous_numpy(tensor: TensorMap) -> TensorMap:
     """
     Takes a TensorMap whose block values are ndarrays and ensures they are
     contiguous. Allows tensors produced by slicing/splitting to be saved to file
-    using the equistore.io.save method.
+    using the equistore.save method.
     """
 
     new_blocks = []
@@ -345,22 +359,6 @@ def labels_intersection(a: Labels, b: Labels):
     return a[intersection_idxs]
 
 
-def get_feature_labels(tensor: Union[TensorMap, TensorBlock]) -> Union[dict, Labels]:
-    """
-    Returns the feature labels for the input ``tensor``. If passing a TensorMap,
-    this function returns a dict of Labels object, indexed by the block keys,
-    with values that correspond to the properties Labels of each block. If
-    passing just a TensorBlock, a Labels object corresponding to the input
-    ``tensor`` properties Labels is returned.
-    """
-    if isinstance(tensor, TensorMap):
-        return {key: block.properties for key, block in tensor}
-    elif isinstance(tensor, TensorBlock):
-        return tensor.properties
-    else:
-        raise TypeError("``tensor`` must be either a TensorMap or TensorBlock")
-
-
 # ===== TensorMap + TensorBlock functions
 
 
@@ -382,89 +380,6 @@ def num_elements_tensor(tensor: Union[TensorMap, TensorBlock, torch.Tensor]) -> 
         return torch.prod(tensor.size)
     else:
         raise TypeError("must pass either a TensorMap, TensorBlock, or torch.Tensor")
-
-
-def delta_tensor(input: TensorMap, target: TensorMap, absolute: bool = False):
-    """
-    Returns a :py:class:`TensorMap` whose block values are the difference
-    between the block values of the input and target tensors. The keys,
-    samples, components and properties Labels must be the same for both
-    tensors. For each :py:class:`TensorBlock` in the ``input`` tensor, the
-    values of the corresponding :py:class:`TensorBlock` in the ``target``
-    tensor is subtracted, i.e. input_block.values - target_block.values for
-    each block in the input/target TensorMaps.
-
-    If ``absolute`` is true, the absolute difference |input - target|.
-    """
-    # Check tensor metadata is equivalent
-    equivalent_metadata(input, target)
-
-    # Calculate the delta tensor
-    blocks = []
-    for key in target.keys:
-        values = input[key].values - target[key].values
-        if absolute:
-            values = abs(values)
-        blocks.append(
-            TensorBlock(
-                samples=target[key].samples,
-                components=target[key].components,
-                properties=target[key].properties,
-                values=values,
-            )
-        )
-    delta = TensorMap(keys=target.keys, blocks=blocks)
-    return delta
-
-
-def equivalent_metadata(
-    a: TensorMap,
-    b: TensorMap,
-    keys: bool = True,
-    samples: bool = True,
-    components: bool = True,
-    properties: bool = True,
-):
-    """
-    For each of the Labels objects ``keys``, ``samples``, ``components`` and
-    ``properties``, if passed as true, checks that these metadata are equivalent
-    between the 2 TensorMaps ``a`` and ``b``. Keys are checked for equivalent
-    values, ignoring order. Samples, components, and properties are checked for
-    exact equivalent, including order.
-
-    If any of the tests fail, a ValueError is raised. Note: gradient comparisons
-    aren't yet implemented.
-    """
-    if keys:
-        if not labels_equal(a.keys, b.keys, correct_order=False):
-            raise ValueError("input TensorMaps have different key Labels")
-    for key in a.keys:
-        # Check samples
-        if samples:
-            if not labels_equal(a[key].samples, b[key].samples, correct_order=True):
-                raise ValueError(
-                    "samples Labels for ``a`` and ``b`` must be exactly equivalent."
-                    + f" Offending block at key {key}"
-                )
-        # Check components
-        if components:
-            for c_i in range(len(a[key].components)):
-                if not labels_equal(
-                    a[key].components[c_i], b[key].components[c_i], correct_order=True
-                ):
-                    raise ValueError(
-                        "components Labels for ``a`` and ``b`` must be exactly equivalent."
-                        + f" Offending block at key {key}"
-                    )
-        # Check properties
-        if properties:
-            if not labels_equal(
-                a[key].properties, b[key].properties, correct_order=True
-            ):
-                raise ValueError(
-                    "properties Labels for ``a`` and ``b`` must be exactly equivalent."
-                    + f" Offending block at key {key}"
-                )
 
 
 def rename_tensor(
@@ -573,6 +488,98 @@ def rename_block(
     )
 
 
+def drop_key_name(tensor: TensorMap, key_name: str) -> TensorMap:
+    """
+    Takes a TensorMap and drops the key_name from the keys. Every key must have
+    the same value for the key_name, otherwise a ValueError is raised.
+    """
+    # Check that the key_name is present and unique
+    if not len(np.unique(tensor.keys[key_name])) == 1:
+        raise ValueError(
+            f"key_name {key_name} is not unique in the keys."
+            " Can only drop a key_name where the value is the"
+            " same for all keys."
+        )
+
+    # Define the idx of the key_name to drop
+    drop_idx = tensor.keys.names.index(key_name)
+
+    # Build the new keys
+    new_keys = Labels(
+        names=tensor.keys.names[:drop_idx] + tensor.keys.names[drop_idx + 1 :],
+        values=np.array(
+            [k.tolist()[:drop_idx] + k.tolist()[drop_idx + 1 :] for k in tensor.keys]
+        ),
+    )
+    return TensorMap(keys=new_keys, blocks=[b.copy() for b in tensor.blocks()])
+
+
+def drop_metadata_name(tensor: TensorMap, axis: str, name: str) -> TensorMap:
+    """
+    Takes a TensorMap and drops the `name` from either the "samples" or
+    "properties" labels of every block. Every block must have the same value for
+    the `name`, otherwise a ValueError is raised.
+    """
+    if axis not in ["samples", "properties"]:
+        raise ValueError(f"axis must be 'samples' or 'properties', not {axis}")
+    # Check that the name is present and unique
+    for block in tensor.blocks():
+        if axis == "samples":
+            uniq = np.unique(block.samples[name])
+        else:
+            uniq = np.unique(block.properties[name])
+        if len(uniq) > 1:
+            raise ValueError(
+                f"name {name} is not unique in the {axis}."
+                " Can only drop a `name` where the value is the"
+                f" same for all {axis}."
+            )
+    # Identify the idx of the name to drop
+    if axis == "samples":
+        drop_idx = tensor.blocks()[0].samples.names.index(name)
+    elif axis == "properties":
+        drop_idx = tensor.blocks()[0].properties.names.index(name)
+    # Construct new blocks with the dropped name
+    new_blocks = []
+    for key in tensor.keys:
+        new_samples = tensor[key].samples
+        new_properties = tensor[key].properties
+        if axis == "samples":
+            new_samples = Labels(
+                names=tensor[key].samples.names[:drop_idx]
+                + tensor[key].samples.names[drop_idx + 1 :],
+                values=np.array(
+                    [
+                        s.tolist()[:drop_idx] + s.tolist()[drop_idx + 1 :]
+                        for s in tensor[key].samples
+                    ]
+                ),
+            )
+        else:
+            new_properties = Labels(
+                names=tensor[key].properties.names[:drop_idx]
+                + tensor[key].properties.names[drop_idx + 1 :],
+                values=np.array(
+                    [
+                        p.tolist()[:drop_idx] + p.tolist()[drop_idx + 1 :]
+                        for p in tensor[key].properties
+                    ]
+                ),
+            )
+        new_blocks.append(
+            TensorBlock(
+                samples=new_samples,
+                components=tensor[key].components,
+                properties=new_properties,
+                values=tensor[key].values,
+            )
+        )
+    return TensorMap(
+        keys=tensor.keys,
+        blocks=new_blocks,
+    )
+
+
 def pad_with_empty_blocks(
     input: TensorMap, target: TensorMap, slice_axis: str = "samples"
 ) -> TensorMap:
@@ -611,32 +618,6 @@ def pad_with_empty_blocks(
     return TensorMap(keys=target.keys, blocks=blocks)
 
 
-def equal_metadata(a: TensorMap, b: TensorMap):
-    """Checks for equivalence in metadata between 2 TensorMaps"""
-    # Check for equivalence in keys Labels (order not important)
-    keys_a = a.keys
-    keys_b = b.keys
-    assert labels_equal(keys_a, keys_b, correct_order=False)
-
-    # Check for exact equivalence (including exact order) between samples and
-    # components Labels for each block in a and b
-    for key in a.keys:
-        samples_a = a[key].samples
-        samples_b = b[key].samples
-        if not labels_equal(samples_a, samples_b, correct_order=True):
-            raise ValueError(
-                f"a and b blocks at key {key} have inequivalent samples Labels"
-            )
-        components_a = a[key].components
-        components_b = b[key].components
-        assert len(components_a) == len(components_b)
-        for c_i in range(len(components_a)):
-            if not labels_equal(components_a[c_i], components_b[c_i]):
-                raise ValueError(
-                    f"a and b blocks at key {key} have inequivalent components Labels"
-                )
-
-
 # ===== other utility functions
 
 
@@ -661,3 +642,56 @@ def get_log_subset_sizes(
         dtype=int,
     )
     return subset_sizes
+
+
+# ===== feature standardization
+
+
+def get_invariant_means(tensor: TensorMap) -> TensorMap:
+    """
+    Calculates the mean of the invariant (l=0) blocks on the input `tensor`
+    using the `equistore.mean_over_samples` function. Returns the result in a
+    new TensorMap, whose number of block is equal to the number of invariant
+    blocks in `tensor`. Assumes `tensor` is a numpy-based TensorMap.
+    """
+    # Define the keys of the invariant blocks and create a new TensorMap
+    inv_keys = tensor.keys[tensor.keys["spherical_harmonics_l"] == 0]
+    inv_tensor = TensorMap(keys=inv_keys, blocks=[tensor[k].copy() for k in inv_keys])
+
+    # Find the mean over sample for the invariant blocks
+    return equistore.mean_over_samples(
+        inv_tensor, samples_names=inv_tensor.sample_names
+    )
+
+
+def standardize_invariants(
+    tensor: TensorMap, invariant_means: TensorMap, reverse: bool = False
+) -> TensorMap:
+    """
+    Standardizes the invariant (l=0) blocks on the input `tensor` by subtracting
+    from each coefficient the mean of the coefficients belonging to that
+    feature. Returns a new TensorMap.
+
+    Must pass the TensorMap containing the means of the features,
+    `invariant_means`. If `reverse` is true, the mean is instead added back to
+    the coefficients of each feature. Assumes `tensor` and `invariant_means` are
+    numpy-based TensorMaps.
+    """
+    new_keys = tensor.keys
+    new_blocks = []
+    # Iterate over the invariant keys
+    for key in new_keys:
+        if key in invariant_means.keys:  # standardize
+            # Copy the block
+            new_block = tensor[key].copy()
+            # Manipulate values of copied block in place
+            for p in range(len(new_block.properties)):
+                if reverse:  # add the mean to the values
+                    new_block.values[..., p] += invariant_means[key].values[..., p]
+                else:  # subtract
+                    new_block.values[..., p] -= invariant_means[key].values[..., p]
+            new_blocks.append(new_block)
+        else:  # Don't standardize
+            new_blocks.append(tensor[key].copy())
+
+    return TensorMap(new_keys, new_blocks)
