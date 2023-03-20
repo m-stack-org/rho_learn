@@ -127,17 +127,15 @@ be installed in the ``rho`` environment. Ensure you install these **in the order
 shown below** (this is very important) and with the exact commands, as some
 development branches are required for this setup.
 
-  2. **rascaline**: ``pip install git+https://github.com/luthaf/rascaline.git@rholearn``
+  2. **rascaline**: ``pip install git+https://github.com/m-stack-org/rascaline.git@rholearn``
 
-  3. **equisolve**: ``pip install git+https://github.com/lab-cosmo/equisolve.git@rholearn``
+  3. **equisolve**: ``pip install git+https://github.com/m-stack-org/equisolve.git@rholearn``
 
-  4. **equistore**: ``pip install git+https://github.com/lab-cosmo/equistore.git@rholearn``
+  4. **qstack**: ``pip install git+https://github.com/jwa7/Q-stack.git``
 
-  5. **qstack**: ``pip install git+https://github.com/jwa7/Q-stack.git``
+  5. **chemiscope**: ``pip install chemiscope``
 
-  6. **chemiscope**: ``pip install chemiscope``
-
-  7. **rholearn**: ensure you're in the ``rho_learn/`` directory then ``pip install .``
+  6. **rholearn**: ensure you're in the ``rho_learn/`` directory then ``pip install .``
 
 
 ## Jupyter Notebooks
