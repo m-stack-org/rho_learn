@@ -156,7 +156,8 @@ from rholearn.loss import MSELoss, CoulombLoss
 from rholearn.models import EquiModelGlobal
 from rholearn.training import train
 
-from equistore import io, Labels, TensorMap
+import equistore
+from equistore import Labels, TensorMap
 from equisolve.utils import split_data
 ```
 

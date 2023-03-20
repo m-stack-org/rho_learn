@@ -6,14 +6,11 @@ import torch
 
 import equistore
 from equistore import Labels, TensorBlock, TensorMap
-from equistore.operations import _utils
 
 # TODO:
 # - Remove functions once in equistore:
 #       - searchable_labels
-#       - drop_blocks
 #       - labels_equal
-#       - equal_metadata
 #       - tensor_to_torch/numpy, block_to_torch/numpy
 
 # ===== tensors to torch fxns
