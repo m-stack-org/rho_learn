@@ -69,7 +69,7 @@ def predict_density_from_xyz(
         input, requires_grad=False, dtype=torch.float64, device=torch.device("cpu")
     )
 
-    return predict_density_from_mol(mol, input, model_path, inv_means_path)
+    return predict_density_from_mol(input, mol, model_path, inv_means_path)
 
 
 def predict_density_from_mol(
