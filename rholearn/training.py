@@ -21,6 +21,7 @@ def train(
     save_interval: int,
     save_dir: str,
     restart: int = None,
+    print_level: int = 0,
 ):
     """
     Performs ``model`` training over the specified number of epochs
@@ -53,7 +54,10 @@ def train(
         losses_train = []
         losses_test = []
         with open(os.path.join(save_dir, "log.txt"), "a+") as f:
-            f.write("# epoch train_loss test_loss time_seconds")
+            msg = f"# epoch train_loss test_loss time_seconds"
+            f.write(msg)
+            if print_level > 0:
+                print(msg)
     else:
         epochs = range(restart + 1, n_epochs + 1)
         losses = np.load(os.path.join(save_dir, "losses.npz"))
@@ -93,12 +97,15 @@ def train(
         # Generate log msg and update progress log
         dt = time.time() - t0
         with open(os.path.join(save_dir, "log.txt"), "a+") as f:
-            f.write(
+            msg = (
                 f"\n{epoch} "
                 f"{np.round(losses_train[-1], 10)} "
                 f"{np.round(losses_test[-1], 10)} "
                 f"{np.round(dt, 2)} "
             )
+            f.write(msg)
+            if print_level > 0:
+                print(msg)
 
         # Write model to file and update log at the specified epoch intervals
         if epoch % save_interval == 0:
