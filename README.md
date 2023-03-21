@@ -240,6 +240,9 @@ associated error.
   Systems, Phys. Rev. Lett. 120, 036002. DOI:
   [10.1103/PhysRevLett.120.036002](https://doi.org/10.1103/PhysRevLett.120.036002)
 
+* SALTED (Symmetry-Adapted Learning of Three-dimensional Electron Densities),
+  GitHub: [github.com/andreagrisafi/SALTED](https://github.com/andreagrisafi/SALTED/)
+
 * Transferable Machine-Learning Model of the Electron Density, ACS Cent. Sci.
   2019, 5, 57−64. DOI:
   [10.1021/acscentsci.8b00551](https://doi.org/10.1021/acscentsci.8b00551)
