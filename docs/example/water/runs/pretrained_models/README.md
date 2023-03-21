@@ -17,7 +17,8 @@ To load and make predictions with the models:
 ```py
 import os
 import torch
-from rholearn import io
+import equistore
+from rholearn import io, utils
 
 RHOLEARN_PATH = "/path/to/rho_learn/"
 
