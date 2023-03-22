@@ -1,9 +1,22 @@
-In this directory are a linear and nonlinear model pretrained on the dataset of
-1000 water monomers, $N_{\text{train}} = 800, N_{\text{test}} = 199$. For both,
-LBFGS is used as the optimizer with a learning rate of 1.25. MSE is used as the
-loss, and invariants are standardized prior to training. The averages of
-invariant features of the training data are also provided. The test error of both
-models saturated by epoch 2500.
+In this directory are a linear (`linear.pt`) and nonlinear (`nonlinear.pt`)
+model pretrained on the dataset of 1000 water monomers
+(`water/data/water_monomers_1k.xyz`), with $N_{\text{train}} = 800,
+N_{\text{test}} = 199$. For both models, LBFGS is used as the optimizer with a
+learning rate of 1.25. Invariant blocks of the electron density are standardized
+prior to training, with the averages of the invariant features of the training
+set provided (`water/data/inv_means.npz`). The test error of both models
+saturated by epoch 2500.
+
+Purely for demonstrative purposes, and to keep the code lightweight, an MSE loss
+metric on the basis set coefficients is used to train the model. In practice,
+the proper way of defining a loss would be to take the product of a) the
+difference in predicted and target coefficients, $\Delta c$, and b) the
+difference in predicted and target projections of the coefficients onto the
+basis set, $\Delta w$. This requires storage of and operations with large
+overlap matrices at runtime, with is costly and therefore not included in this
+water training demo. This approach is included in the azoswitch example,
+however, where Coulomb metrics (instead of overlap matrices) are used to define
+the loss.
 
 The nonlinear model uses the architecture described in the figure at
 [docs/example/figures/nonlinear_architecture.png](https://github.com/m-stack-org/rho_learn/blob/main/docs/example/figures/nonlinear_architecture.png).
