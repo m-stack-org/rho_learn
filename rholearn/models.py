@@ -500,13 +500,20 @@ class NonLinearModel(torch.nn.Module):
     This model class must be initialized with several arguments. First, the
     number of ``in_features`` and ``out_features`` of the equivariant block,
     which dictates the widths of the input and output linear layers applied to
-    the equivariant. Second, the number of features present in the supplementary
-    invariant block, ``in_invariant_features`` - this controls the width of the
-    input layer to the neural network that the invariant block is passed
-    through. Third, the ``hidden_layer_widths`` passed as a list of int. The
-    number of elements in the list dictate how many (nonlinear, linear) layer
-    pairs are in the NN architecture, after the linear input layer. Finally, the
-    ``activation_fn`` that should be used must be specified.
+    the equivariant. 
+    
+    Second, the number of features present in the supplementary invariant block,
+    ``in_invariant_features`` - this controls the width of the input layer to
+    the neural network that the invariant block is passed through. 
+    
+    Third, the ``hidden_layer_widths`` passed as a list of int. For ``n_elems``
+    number of elements in the list, there will be ``n_elems`` number of hidden
+    linear layers in the NN architecture, but ``n_elems - 1`` number of
+    nonlinear activation layers. Passing a list with 1 element therefore
+    corresponds to a linear model, where all equivariant blocks are multiplied
+    by their corresponding invariants, but with no nonlinearities included.
+    
+    Finally, the ``activation_fn`` that should be used must be specified.
     """
 
     # Initialize model
@@ -550,7 +557,7 @@ class NonLinearModel(torch.nn.Module):
                 bias=True,
             )
         ]
-        for layer_i in range(1, len(hidden_layer_widths)):
+        for layer_i in range(0, len(hidden_layer_widths) - 1):
             if activation_fn == "Tanh":
                 layers.append(torch.nn.Tanh())
             elif activation_fn == "GELU":
@@ -563,8 +570,8 @@ class NonLinearModel(torch.nn.Module):
                 )
             layers.append(
                 torch.nn.Linear(
-                    in_features=hidden_layer_widths[layer_i - 1],
-                    out_features=hidden_layer_widths[layer_i],
+                    in_features=hidden_layer_widths[layer_i],
+                    out_features=hidden_layer_widths[layer_i + 1],
                     bias=True,
                 )
             )
