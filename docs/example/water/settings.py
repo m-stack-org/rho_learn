@@ -56,8 +56,8 @@ ML_SETTINGS = {
         },
     },
     "training": {
-        "n_epochs": 25,  # number of total epochs to run
-        "save_interval": 25,  # save model and optimizer state every x intervals
+        "n_epochs": 10,  # number of total epochs to run
+        "save_interval": 10,  # save model and optimizer state every x intervals
         "restart_epoch": None,  # None, or the epoch checkpoint number if restarting
         "standardize_invariant_features": True,
     },
