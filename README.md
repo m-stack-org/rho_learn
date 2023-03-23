@@ -2,6 +2,8 @@
 
 Author: Joseph W. Abbott, PhD Student @ Lab COSMO, EPFL
 
+![azoswitch density](/docs/example/figures/azoswitch_density.png)
+
 
 ## About
 
