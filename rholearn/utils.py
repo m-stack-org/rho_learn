@@ -692,3 +692,16 @@ def standardize_invariants(
             new_blocks.append(tensor[key].copy())
 
     return TensorMap(new_keys, new_blocks)
+
+
+def flatten_tensormap(tensor) -> float:
+    """
+    Flattens all block values and returns as a 1D numpy array.
+    """
+    flattened = np.array([])
+    for block in tensor.blocks():
+        try:
+            flattened = np.concatenate((flattened, np.array(block.values.detach()).flatten()))
+        except AttributeError:
+            flattened = np.concatenate((flattened, np.array(block.values).flatten()))
+    return flattened
