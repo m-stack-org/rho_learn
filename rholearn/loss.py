@@ -370,3 +370,20 @@ class CoulombLoss(torch.nn.Module):
                 loss += 2 * block_loss
 
         return loss
+
+
+def naive_percent_loss(reference, predicted, backend="torch"):
+
+    if backend == "torch":
+
+        reference = torch.hstack([block.values.flatten() for _, block in reference])
+        predicted = torch.hstack([block.values.flatten() for _, block in predicted])
+
+        return 100 * torch.mean((reference - predicted) ** 2) / torch.std(reference)
+
+    elif backend == "numpy":
+
+        reference = np.hstack([block.values.flatten() for _, block in reference])
+        predicted = np.hstack([block.values.flatten() for _, block in predicted])
+
+        return 100 * np.mean((reference - predicted) ** 2) / np.std(reference)
