@@ -47,10 +47,8 @@ class MSELoss(torch.nn.Module):
 
     @staticmethod
     def _check_input_args(reduction: str):
-        if not (reduction in ["sum", "mean_by_blocks", "mean_by_values"]):
-            raise ValueError(
-                "``reduction`` must be one of 'sum', 'mean_by_blocks', 'mean_by_values"
-            )
+        if not (reduction in ["sum"]):
+            raise ValueError("only ``reduction='sum'`` currently supported")
 
     def forward(
         self,
@@ -86,14 +84,7 @@ class MSELoss(torch.nn.Module):
         loss_fn = torch.nn.MSELoss(reduction="sum")
         loss = 0
         for key in input.keys:
-            tmp_loss = loss_fn(input=input[key].values, target=target[key].values)
-            if self.reduction == "mean_by_blocks":
-                tmp_loss /= utils.num_elements_tensor(input[key])
-            loss += tmp_loss
-        if self.reduction == "mean_by_values":  # divide by the total number of elements
-            loss /= utils.num_elements_tensor(input)
-        elif self.reduction == "mean_by_blocks":  # divide by the number of blocks
-            loss /= len(input.keys)
+            loss += loss_fn(input=input[key].values, target=target[key].values)
 
         return loss
 
@@ -371,19 +362,3 @@ class CoulombLoss(torch.nn.Module):
 
         return loss
 
-
-def naive_percent_loss(reference, predicted, backend="torch"):
-
-    if backend == "torch":
-
-        reference = torch.hstack([block.values.flatten() for _, block in reference])
-        predicted = torch.hstack([block.values.flatten() for _, block in predicted])
-
-        return 100 * torch.mean((reference - predicted) ** 2) / torch.std(reference)
-
-    elif backend == "numpy":
-
-        reference = np.hstack([block.values.flatten() for _, block in reference])
-        predicted = np.hstack([block.values.flatten() for _, block in predicted])
-
-        return 100 * np.mean((reference - predicted) ** 2) / np.std(reference)
