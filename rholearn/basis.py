@@ -254,6 +254,27 @@ def basiset(basis):
         nmax[("O", 7)] = 2
         nmax[("O", 8)] = 1
 
+    elif basis == "FHI-aims-tight-2":
+
+        lmax["H"] = 4
+        lmax["O"] = 8
+
+        nmax[("H", 0)] = 8
+        nmax[("H", 1)] = 6
+        nmax[("H", 2)] = 6
+        nmax[("H", 3)] = 3
+        nmax[("H", 4)] = 1
+
+        nmax[("O", 0)] = 9
+        nmax[("O", 1)] = 10
+        nmax[("O", 2)] = 9
+        nmax[("O", 3)] = 8
+        nmax[("O", 4)] = 6
+        nmax[("O", 5)] = 4
+        nmax[("O", 6)] = 4
+        nmax[("O", 7)] = 2
+        nmax[("O", 8)] = 1
+
     elif basis == "FHI-aims-ZrS":
 
         lmax["S"] = 6
