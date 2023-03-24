@@ -359,26 +359,6 @@ def labels_intersection(a: Labels, b: Labels):
 # ===== TensorMap + TensorBlock functions
 
 
-def num_elements_tensor(tensor: Union[TensorMap, TensorBlock, torch.Tensor]) -> int:
-    """
-    Returns the total number of elements in the input tensor.
-
-    If the input tensor is a TensorMap the number of elements is given by the
-    sum of the product of the dimensions for each block.
-
-    If the input tensor is a TensorBlock or a torch.Tensor, the number of
-    elements is just given by the product of the dimensions.
-    """
-    if isinstance(tensor, TensorMap):
-        return torch.sum([torch.prod(block.values.shape) for _, block in tensor])
-    elif isinstance(tensor, TensorBlock):
-        return torch.prod(tensor.values.shape)
-    elif isinstance(tensor, torch.Tensor):
-        return torch.prod(tensor.size)
-    else:
-        raise TypeError("must pass either a TensorMap, TensorBlock, or torch.Tensor")
-
-
 def rename_tensor(
     tensor: TensorMap,
     keys_names: Optional[List[str]] = None,
@@ -694,14 +674,41 @@ def standardize_invariants(
     return TensorMap(new_keys, new_blocks)
 
 
-def flatten_tensormap(tensor) -> float:
+def flatten_tensormap(tensor, backend: str) -> float:
     """
     Flattens all block values and returns as a 1D numpy array.
     """
-    flattened = np.array([])
-    for block in tensor.blocks():
-        try:
-            flattened = np.concatenate((flattened, np.array(block.values.detach()).flatten()))
-        except AttributeError:
-            flattened = np.concatenate((flattened, np.array(block.values).flatten()))
+    if backed == "numpy":
+        flattened = np.array([])
+        for block in tensor.blocks():
+            flattened = np.concatenate((flattened, block.values.flatten()))
+    elif backend == "torch":
+        flattened = torch.tensor([])
+        for block in tensor.blocks():
+            flattened = torch.cat((flattened, block.values.flatten()))
+
+    else:
+        raise ValueError(f"Unknown backend {backend}, must be 'numpy' or 'torch'")
+
     return flattened
+
+
+def num_elements_tensormap(tensor: TensorMap) -> int:
+    """
+    Returns the total number of elements in the input tensor.
+
+    If the input tensor is a TensorMap the number of elements is given by the
+    sum of the product of the dimensions for each block.
+
+    If the input tensor is a TensorBlock or a torch.Tensor, the number of
+    elements is just given by the product of the dimensions.
+    """
+    n_elems = 0
+    if isinstance(tensor.block(0).values, np.ndarray):
+        for block in tensor.blocks():
+            n_elems += np.prod(block.values.shape)
+    elif isinstance(tensor.block(0).values, torch.Tensor):
+        for block in tensor.blocks():
+            n_elems += torch.prod(block.values.shape)
+
+    return int(n_elems)
