@@ -163,11 +163,10 @@ def training_step(
         # Make a training prediction with the model
         out_train_pred = model(in_train)
         # Calculate the train loss
-        # if isinstance(loss_fn, dict):
-        # loss_val = loss_fn["train"](input=out_train_pred, target=out_train)
-        loss_val = loss.naive_percent_loss(out_train, out_train_pred, backend="torch")
-        # else:
-        #     loss = loss_fn(input=out_train_pred, target=out_train)
+        if isinstance(loss_fn, dict):
+            loss_val = loss_fn["train"](input=out_train_pred, target=out_train)
+        else:
+            loss_val = loss_fn(input=out_train_pred, target=out_train)
         # Calculate the gradient of the loss wrt model parameters
         loss_val.backward(retain_graph=True)
 
@@ -176,21 +175,14 @@ def training_step(
     # Update model weights and get the train loss
     loss_train = optimizer.step(closure)
 
-    # out_train_pred = model(in_train)
-    # loss_train = loss.naive_percent_loss(out_train, out_train_pred)
 
+    # Make a test prediction and calculate the loss
     with torch.no_grad():
-
         out_test_pred = model(in_test)
-        loss_test = loss.naive_percent_loss(out_test, out_test_pred)
-
-    # # Make a test prediction and calculate the loss
-    # with torch.no_grad():
-    #     out_test_pred = model(in_test)
-    #     if isinstance(loss_fn, dict):
-    #         loss_test = loss_fn["test"](input=out_test_pred, target=out_test)
-    #     else:
-    #         loss_test = loss_fn(input=out_test_pred, target=out_test)
+        if isinstance(loss_fn, dict):
+            loss_test = loss_fn["test"](input=out_test_pred, target=out_test)
+        else:
+            loss_test = loss_fn(input=out_test_pred, target=out_test)
 
     # Return the train and test loss
     return loss_train, loss_test
