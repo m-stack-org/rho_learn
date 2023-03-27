@@ -121,7 +121,7 @@ def partition_data(input_path: str, output_path: str, data_settings: dict):
 
         # Define the filenames to save the structure indices of the partitioned data
         assert len(grouped_indices) == 2
-        idx_files = {0: "train", 1: "test", 2: "val"}
+        idx_files = {0: "train", 1: "test"}
 
         # Define the filenames to save the TensorMaps of the partitioned data
         tm_files = {
