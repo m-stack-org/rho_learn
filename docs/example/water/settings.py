@@ -21,7 +21,7 @@ DATA_SETTINGS = {
     "axis": "samples",         # which axis to split the data along
     "names": ["structure"],    # what index to split the data by - i.e. "structure"
     "n_groups": 3,             # num groups for data split (i.e. 3 for train-test-val)
-    "group_sizes": [500, 200, 1],  # the abs/rel group sizes for the data splits
+    "group_sizes": [500, 300, 1],  # the abs/rel group sizes for the data splits
     "n_exercises": 2,  # the number of learning exercises to perform
     "n_subsets": 3,    # how many subsets to use for each exercise
     "seed": 10,        # random seed for data split
